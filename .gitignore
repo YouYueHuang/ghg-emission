@@ -1,0 +1,27 @@
+# 忽略資料與結果資料夾 (大檔案不進 Git)
+data/
+prompt/
+
+# 忽略 Python 暫存檔與快取
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# 忽略虛擬環境 (Virtual Environments)
+.venv/
+venv/
+ENV/
+env/
+
+# 忽略 Jupyter Notebook 暫存檔
+.ipynb_checkpoints/
+
+# 忽略環境變數與系統檔
+.env
+.DS_Store
+Thumbs.db
+
+# 忽略日誌與測試暫存
+*.log
+.pytest_cache/
