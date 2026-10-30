@@ -3,6 +3,7 @@ import numpy as np
 import pandas as pd
 import xarray as xr
 import matplotlib.pyplot as plt
+import matplotlib.colors as mcolors
 
 # ===== 路徑設定 =====
 input_dir = r"../data/raw/nc_datas/data_2023/GEMS_NO2"
@@ -157,16 +158,51 @@ summary = pd.DataFrame({
 summary['has_data'] = summary['valid_pixels_total'] > 0
 summary.to_csv(os.path.join(output_dir, f'explore_{tag}_summary.csv'), index=False)
 
-fig, ax = plt.subplots(figsize=(10, 8))
-im = ax.imshow(cov_df.values, aspect='auto', cmap='viridis', vmin=0, vmax=100)
+# ===== 9. 涵蓋率熱圖：20 階離散色階 (0 ~ 100%，每階 5%)，每格標示百分比 =====
+cov_bounds = np.arange(0, 100.01, 5)          # 0, 5, ..., 100：21 個邊界、20 個區間
+cov_colors = [
+    '#ECEFF1', '#E1BEE7', '#EA80FC', '#9380FC',  # 0 ~ 20%
+    '#8C9EFF', '#8CBEFF', '#8CDCFF', '#1DE9B6',  # 20 ~ 40%
+    '#80ff80', '#b3ff66', '#ffff66', '#ffe666',  # 40 ~ 60%
+    '#ffcc00', '#ff9900', '#ff6600', '#ff3300',  # 60 ~ 80%
+    '#e60000', '#cc0000', '#990000', '#800000'   # 80 ~ 100%
+]
+assert len(cov_colors) == len(cov_bounds) - 1, "顏色數必須等於區間數"
+cov_cmap = mcolors.ListedColormap(cov_colors)
+cov_norm = mcolors.BoundaryNorm(cov_bounds, cov_cmap.N)
+
+cov_values = cov_df.values
+fig, ax = plt.subplots(figsize=(14, 15))
+im = ax.imshow(cov_values, aspect='auto', cmap=cov_cmap, norm=cov_norm)
+
+# 每一格標示百分比；依底色深淺自動選擇白字或黑字
+for r in range(nd):
+    for c in range(nh):
+        val = cov_values[r, c]
+        idx = int(np.clip(np.digitize(val, cov_bounds) - 1, 0, len(cov_colors) - 1))
+        rgb = mcolors.to_rgb(cov_colors[idx])
+        lum = 0.299 * rgb[0] + 0.587 * rgb[1] + 0.114 * rgb[2]
+        txt = "0" if val == 0 else f"{val:.1f}"
+        ax.text(c, r, txt, ha='center', va='center', fontsize=7,
+                color='white' if lum < 0.5 else 'black')
+
 ax.set_xticks(range(nh))
-ax.set_xticklabels(hour_vals)
+ax.set_xticklabels([f"{h:g}" for h in hour_vals])
 ax.set_yticks(range(nd))
-ax.set_yticklabels(day_vals)
+ax.set_yticklabels([f"{d:g}" for d in day_vals])
 ax.set_xlabel('hour')
 ax.set_ylabel('day')
 ax.set_title(f'GEMS NO2 valid pixel coverage (%) - {tag}')
-fig.colorbar(im, ax=ax, label='coverage (%)')
+
+# 以格線分隔每一格
+ax.set_xticks(np.arange(-0.5, nh, 1), minor=True)
+ax.set_yticks(np.arange(-0.5, nd, 1), minor=True)
+ax.grid(which='minor', color='white', linewidth=0.5)
+ax.tick_params(which='minor', length=0)
+
+cbar = fig.colorbar(im, ax=ax, ticks=cov_bounds, shrink=0.8)
+cbar.set_label('coverage (%)')
+
 fig.savefig(os.path.join(output_dir, f'explore_{tag}_coverage_heatmap.png'),
             dpi=200, bbox_inches='tight')
 plt.close(fig)
