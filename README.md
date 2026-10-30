@@ -73,12 +73,12 @@ data_2023/
 模型效能評估需繪製 **Ground Truth vs Prediction** 散布圖，格式規範如下：
 
 * **座標軸**：
-  * **X 軸**：$\text{GND (unit : ppb)}$（測站實際觀測值）
-  * **Y 軸**：$\text{PRED (unit : ppb)}$（模型推估值）
+  * **X 軸**：$\text{GND(unit : ppb)}$（測站實際觀測值）
+  * **Y 軸**：$\text{PRED(unit : ppb)}$（模型推估值）
 * **圖表元素**：
   * **1:1 參考線**：紅色虛線（對角線）。
   * **Colorbar**：依據局部點密度（Local point density）套用20色離散彩虹色階。
-  * **統計評估指標框（左上角浮動框）**：
+  * **統計評估指標框**：
     * $r$ (相關係數)
     * $R^2$ (決定係數)
     * $\text{RMSE}$ (均方根誤差)
