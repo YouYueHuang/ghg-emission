@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
 from matplotlib.patches import Patch
 import cartopy.crs as ccrs
+from color_palette import boundaries, hex_colors
 
 # 1. 定義路徑並確保輸出資料夾存在
 input_dir = r"../data/raw/nc_datas/data_2023/GEMS_NO2"
@@ -29,17 +30,6 @@ if not nc_files:
     raise SystemExit(f"找不到任何 .nc 檔案於路徑: {input_dir}")
 print(f"找到 {len(nc_files)} 個 .nc 檔案，開始進行批次處理...")
 
-# 3. 色階設定 (0 ~ 1，間距 0.05，共 20 階；數值已除以 10^exponent)
-boundaries = [0, 0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4,
-              0.45, 0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 0.8,
-              0.85, 0.9, 0.95, 1.0]
-hex_colors = [
-    '#ECEFF1', '#E1BEE7', '#EA80FC', '#9380FC',  # 0.00 ~ 0.20
-    '#8C9EFF', '#8CBEFF', '#8CDCFF', '#1DE9B6',  # 0.20 ~ 0.40
-    '#80ff80', '#b3ff66', '#ffff66', '#ffe666',  # 0.40 ~ 0.60
-    '#ffcc00', '#ff9900', '#ff6600', '#ff3300',  # 0.60 ~ 0.80
-    '#e60000', '#cc0000', '#990000', '#800000'   # 0.80 ~ 1.00
-]
 assert len(hex_colors) == len(boundaries) - 1, "顏色數必須等於區間數"
 
 cmap = mcolors.ListedColormap(hex_colors)

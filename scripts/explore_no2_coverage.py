@@ -4,6 +4,7 @@ import pandas as pd
 import xarray as xr
 import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
+from color_palette import boundaries, hex_colors
 
 # ===== 路徑設定 =====
 input_dir = r"../data/raw/nc_datas/data_2023/GEMS_NO2"
@@ -159,14 +160,9 @@ summary['has_data'] = summary['valid_pixels_total'] > 0
 summary.to_csv(os.path.join(output_dir, f'explore_{tag}_summary.csv'), index=False)
 
 # ===== 9. 涵蓋率熱圖：20 階離散色階 (0 ~ 100%，每階 5%)，每格標示百分比 =====
-cov_bounds = np.arange(0, 100.01, 5)          # 0, 5, ..., 100：21 個邊界、20 個區間
-cov_colors = [
-    '#ECEFF1', '#E1BEE7', '#EA80FC', '#9380FC',  # 0 ~ 20%
-    '#8C9EFF', '#8CBEFF', '#8CDCFF', '#1DE9B6',  # 20 ~ 40%
-    '#80ff80', '#b3ff66', '#ffff66', '#ffe666',  # 40 ~ 60%
-    '#ffcc00', '#ff9900', '#ff6600', '#ff3300',  # 60 ~ 80%
-    '#e60000', '#cc0000', '#990000', '#800000'   # 80 ~ 100%
-]
+cov_bounds = boundaries 
+cov_colors = hex_colors
+
 assert len(cov_colors) == len(cov_bounds) - 1, "顏色數必須等於區間數"
 cov_cmap = mcolors.ListedColormap(cov_colors)
 cov_norm = mcolors.BoundaryNorm(cov_bounds, cov_cmap.N)

@@ -1,6 +1,7 @@
 # 忽略資料與結果資料夾 (大檔案不進 Git)
 data/
 prompt/
+scripts/__pycache__/
 
 # 忽略 Python 暫存檔與快取
 __pycache__/

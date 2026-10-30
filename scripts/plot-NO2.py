@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
 from matplotlib.patches import Patch
 import cartopy.crs as ccrs
+from color_palette import boundaries, hex_colors
 
 # ===== 路徑與選項 =====
 input_dir = r"../data/raw/nc_datas/data_2023/GEMS_NO2"
@@ -76,17 +77,7 @@ for name, da, _, _ in maps:
           f"min {float(da.min()):.3f}, median {float(da.median()):.3f}, max {float(da.max()):.3f} "
           f"(x1e{exponent})")
 
-# ===== 色階 (0 ~ 1，間距 0.05，共 20 階；數值已除以 10^exponent) =====
-boundaries = [0, 0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4,
-              0.45, 0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 0.8,
-              0.85, 0.9, 0.95, 1.0]
-hex_colors = [
-    '#ECEFF1', '#E1BEE7', '#EA80FC', '#9380FC',  # 0.00 ~ 0.20
-    '#8C9EFF', '#8CBEFF', '#8CDCFF', '#1DE9B6',  # 0.20 ~ 0.40
-    '#80ff80', '#b3ff66', '#ffff66', '#ffe666',  # 0.40 ~ 0.60
-    '#ffcc00', '#ff9900', '#ff6600', '#ff3300',  # 0.60 ~ 0.80
-    '#e60000', '#cc0000', '#990000', '#800000'   # 0.80 ~ 1.00
-]
+
 assert len(hex_colors) == len(boundaries) - 1, "顏色數必須等於區間數"
 
 cmap = mcolors.ListedColormap(hex_colors)
