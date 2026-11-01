@@ -1,5 +1,5 @@
 # 忽略資料與結果資料夾 (大檔案不進 Git)
-data/
+data/raw
 prompt/
 scripts/__pycache__/
 
