@@ -1,0 +1,2 @@
+﻿execution_timestamp,input_data_path,train_samples,test_samples,n_estimators,learning_rate,max_depth,subsample,colsample_bytree,random_state,n_jobs,early_stopping_rounds
+20261106_070648,../../data/raw/nc_datas/data_2023/.345-parquet,32971,8243,1000,0.03,6,0.8,0.8,42,-1,50

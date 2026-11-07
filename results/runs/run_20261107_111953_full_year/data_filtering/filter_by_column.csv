@@ -1,0 +1,20 @@
+﻿column,role,rows_missing,pct_missing,rows_removed_only_by_this
+ozone,feature,65118,29.99,0
+troposphere_ozone,feature,65118,29.99,0
+no2,feature,32724,15.07,2450
+NO2_gnd,target,7580,3.49,5296
+VIIRS,feature,3000,1.38,1653
+U,feature,0,0.0,0
+Hr,feature,0,0.0,0
+PBLH,feature,0,0.0,0
+Hum,feature,0,0.0,0
+Temp,feature,0,0.0,0
+V,feature,0,0.0,0
+SWD,feature,0,0.0,0
+NDVI,feature,0,0.0,0
+Industry,feature,0,0.0,0
+Road total length,feature,0,0.0,0
+Business,feature,0,0.0,0
+Residential,feature,0,0.0,0
+MM,feature,0,0.0,0
+day,feature,0,0.0,0

@@ -1,0 +1,60 @@
+{
+  "saved_at": "2026-11-07T10:52:29",
+  "feature_cols": [
+    "Hr",
+    "U",
+    "V",
+    "Temp",
+    "Hum",
+    "PBLH",
+    "SWD",
+    "troposphere_ozone",
+    "ozone",
+    "no2",
+    "VIIRS",
+    "NDVI",
+    "Industry",
+    "Road total length",
+    "Business",
+    "Residential",
+    "MM",
+    "day"
+  ],
+  "target_col": "NO2_gnd",
+  "input_data_path": "../../data/raw/nc_datas/data_2023/.ml-parquet",
+  "best_round": 133,
+  "test_metrics": {
+    "r (Correlation Coefficient)": 0.7314069792421541,
+    "R2 (Coefficient of Determination)": 0.5203934907913208,
+    "RMSE (Root Mean Square Error)": 4.9515110599425505,
+    "MD (Mean Deviation)": 0.7508940100669861,
+    "MAPE (%)": 75.23641967773438
+  },
+  "use_cyclic_time": false,
+  "time_periods": {
+    "hour": 24,
+    "day": 31,
+    "month": 12
+  },
+  "lag_hours": [],
+  "allow_missing_lags": false,
+  "run_mode": "spring",
+  "train_months": [
+    3,
+    4,
+    5
+  ],
+  "test_months": [
+    5
+  ],
+  "spring_months": [
+    3,
+    4,
+    5
+  ],
+  "full_year_only_past": null,
+  "train_rows": 32971,
+  "test_rows": 8243,
+  "test_set_fingerprint": "3e9e2230c6c9",
+  "model_kind": "validated (trained on train split, early stopping)"
+}
