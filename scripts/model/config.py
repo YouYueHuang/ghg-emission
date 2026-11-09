@@ -118,6 +118,18 @@ OPTUNA_SEARCH_SPACE = {
     'gamma':            ('float', 0.0, 5.0, False),
 }
 
+# ===== 留一測站交叉驗證 (Leave-One-Station-Out, run_loso.py) =====
+# 每次把一個測站整個移除（所有時間），用其餘測站訓練，再預測被移除的測站，以時間序列比較預測與實測
+LOSO_STATION_COL = 'siteid'        # 以哪個欄位決定測站：'siteid' 或 'sitename'
+LOSO_NAME_COL = 'sitename'         # 圖表與表格顯示用的測站名稱（資料沒有此欄位時改用 LOSO_STATION_COL）
+LOSO_DATE_COL = 'monitordate'      # 時間序列圖的日期欄位（會再加上 Hr 組成完整時間）
+LOSO_MIN_STATION_ROWS = 50         # 清理後資料列少於此數的測站不做（預測點太少，指標沒有意義）
+LOSO_VAL_STATION_FRAC = 0.15       # 設定了 early stopping 時，從「其餘測站」中抽這個比例的測站當驗證集（被移除的測站完全不參與）
+LOSO_GAP_HOURS = 1.5               # 時間序列圖中，相鄰兩點超過此小時數就斷線（夜間、衛星缺值）
+LOSO_ZOOM_DAYS = 14                # 逐小時圖只畫資料最多的連續 N 天（整段期間太密看不清楚）；0 = 畫全部
+LOSO_SEED = 42
+PLOT_CJK_FONTS = ['Microsoft JhengHei', 'Noto Sans CJK TC', 'PingFang TC', 'Arial Unicode MS']   # 測站名稱含中文時使用
+
 # ===== 圖表 =====
 FIG_DPI = 300
 IMPORTANCE_MAX_FEATURES = 18
