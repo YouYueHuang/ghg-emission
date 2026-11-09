@@ -1,8 +1,8 @@
 """
 XGBoost NO2 Concentration Prediction & SHAP Explanation Model (主程式)
 ----------------------------------------------------------------------
-流程：載入資料 → 依訓練組別（春季 / 全年）建立訓練與測試集（含特徵工程、缺值過濾與報告）→ 訓練 →
-      評估 → 儲存模型權重與參數 → 特徵重要性、逐輪趨勢與 SHAP 圖表
+流程：載入資料 → 依訓練組別（春季 / 全年）建立訓練與測試集（含特徵工程、缺值過濾與報告）→
+      （選用）Optuna 超參數搜尋 → 訓練 → 評估 → 儲存模型權重與參數 → 特徵重要性、逐輪趨勢與 SHAP 圖表
 
 兩種訓練組別（測試集完全相同，指標可直接比較）：
     spring     只用春季（config.SPRING_MONTHS）的資料
@@ -16,6 +16,8 @@ XGBoost NO2 Concentration Prediction & SHAP Explanation Model (主程式)
     preprocessing.py   排序、特徵選擇、重複特徵檢查、NaN 清理、切分
     filter_report.py   切分前的資料過濾報告（哪些資料被過濾、原因）
     model.py           XGBoost 建立與訓練、最終模型
+    tuning.py          Optuna 超參數搜尋（時間序列交叉驗證、TPE、剪枝）
+    tuning_report.py   Optuna 搜尋報告（策略、過程、結果與圖表）
     model_io.py        模型權重 / 超參數 / 中繼資料的儲存與載入
     metrics.py         評估指標 (r, R2, RMSE, MD, MAPE)
     plotting.py        XGBoost 原生特徵重要性圖
@@ -27,13 +29,16 @@ XGBoost NO2 Concentration Prediction & SHAP Explanation Model (主程式)
 預測並畫圖請用 predict_map.py（inference.py、map_plot.py 為其模組）。
 
 Requirements:
-    pip install xgboost scikit-learn pandas numpy matplotlib shap pyarrow
+    pip install xgboost scikit-learn pandas numpy matplotlib shap pyarrow optuna
     （讀 .nc 才需要 xarray netcdf4）
 
 用法（請勿把檔名取成 xgboost.py，會與 xgboost 套件同名衝突）：
     python run_no2_xgb.py                    # 使用 config.RUN_MODE
     python run_no2_xgb.py --mode spring      # 只用春季資料
     python run_no2_xgb.py --mode full_year   # 用全年資料訓練，測試集與春季相同
+    python run_no2_xgb.py --mode spring --tune --n-trials 50   # 先用 Optuna 搜尋最佳參數，再用它訓練
+    python run_no2_xgb.py --mode spring --tune-only            # 只搜尋並輸出報告，不訓練
+    python run_no2_xgb.py --mode spring --params latest        # 沿用該組別最近一次搜尋的最佳參數
 """
 import os
 import argparse
@@ -45,6 +50,8 @@ from data_loader import load_data
 from features import first_existing
 from data_split import prepare_train_test, save_test_set_ids, MODES
 from model import train_model, train_final_model, get_best_round
+from tuning import run_optuna, load_tuned_params, evaluate_baseline_on_test, group_values_for
+from tuning_report import write_report
 from model_io import save_model_bundle
 from metrics import calculate_evaluation_metrics, print_metrics
 from plotting import plot_xgb_importance
@@ -54,7 +61,7 @@ from shap_analysis import generate_shap_plots
 from output_utils import create_run_output_dir, save_run_config, save_metrics
 
 
-def build_meta(target_col, data_input_path, best_round, metrics, split_info):
+def build_meta(target_col, data_input_path, best_round, metrics, split_info, model_params, tuned):
     """寫進 model_meta.json 的資訊；預測時用來確認特徵工程設定一致。"""
     return {
         'target_col': target_col,
@@ -65,11 +72,14 @@ def build_meta(target_col, data_input_path, best_round, metrics, split_info):
         'time_periods': {'hour': config.HOUR_PERIOD, 'day': config.DAY_PERIOD, 'month': config.MONTH_PERIOD},
         'lag_hours': list(config.NO2_LAG_HOURS) if config.USE_NO2_LAGS else [],
         'allow_missing_lags': config.ALLOW_MISSING_LAGS,
+        'hyperparameters': dict(model_params),
+        'tuned_by_optuna': tuned,
         **split_info,
     }
 
 
-def train_no2_xgboost(data_input_path, target_col=config.TARGET_COL, mode=config.RUN_MODE):
+def train_no2_xgboost(data_input_path, target_col=config.TARGET_COL, mode=config.RUN_MODE,
+                      tune=False, tune_only=False, params_path=None, n_trials=None, timeout=None):
     print("=" * 75)
     print(f"🚀 開始執行 NO2 預測模型訓練與評估流程（訓練組別: {mode}）...")
     print("=" * 75)
@@ -83,21 +93,40 @@ def train_no2_xgboost(data_input_path, target_col=config.TARGET_COL, mode=config
         df, target_col, mode, output_dir)
     save_test_set_ids(df_clean, X_test.index, target_col, output_dir)
 
-    # 3. 訓練
-    model = train_model(X_train, y_train, X_test, y_test)
+    # 3. 超參數：預設用 config.MODEL_PARAMS；--tune 先用 Optuna 搜尋（只用訓練資料）；--params 沿用先前的搜尋結果
+    model_params, tuning_result = config.MODEL_PARAMS, None
+    if tune:
+        group = group_values_for(df_clean, X_train.index)
+        tuning_result = run_optuna(X_train, y_train, group, feature_cols, mode, output_dir,
+                                   n_trials=n_trials, timeout=timeout)
+        model_params = tuning_result['best']['full_params']
+        if tune_only:
+            print(f"🎉 搜尋完成（未訓練模型），報告與最佳參數已存入: {output_dir}")
+            return None
+    elif params_path:
+        model_params, _ = load_tuned_params(params_path, mode, feature_cols)
 
-    # 4. 紀錄設定
+    # 4. 訓練
+    model = train_model(X_train, y_train, X_test, y_test, model_params=model_params)
+
+    # 5. 紀錄設定
     save_run_config(output_dir, timestamp, data_input_path,
-                    len(X_train), len(X_test), config.MODEL_PARAMS,
-                    extra={**split_info, 'train_months': str(split_info['train_months']),
+                    len(X_train), len(X_test), model_params,
+                    extra={**split_info, 'tuned_by_optuna': tune, 'train_months': str(split_info['train_months']),
                            'test_months': str(split_info['test_months']),
                            'spring_months': str(split_info['spring_months'])})
 
-    # 5. 評估
+    # 6. 評估
     y_pred = model.predict(X_test)
     metrics = calculate_evaluation_metrics(y_test, y_pred)
     print_metrics(metrics)
     save_metrics(output_dir, metrics)
+    if tuning_result is not None:      # 調參前後的測試集對照，補進 Optuna 報告
+        base_metrics = evaluate_baseline_on_test(tuning_result, X_train, y_train, X_test, y_test)
+        write_report(tuning_result, output_dir, test_results={
+            'baseline': base_metrics, 'tuned': metrics,
+            'baseline_rounds': tuning_result['baseline']['final_rounds'],
+            'tuned_rounds': tuning_result['best']['final_rounds']})
     # 散布圖：訓練集一張、測試集整體一張、測試集依小時（Hr）各一張
     plot_obs_vs_model(y_train, model.predict(X_train), output_dir, name="train", title_suffix="Train")
     plot_obs_vs_model(y_test, y_pred, output_dir, name="test", title_suffix="Test")
@@ -108,23 +137,24 @@ def train_no2_xgboost(data_input_path, target_col=config.TARGET_COL, mode=config
     else:
         print(f"[警告] 找不到小時欄位（候選 {config.HOUR_COL_CANDIDATES}），略過逐小時散布圖")
 
-    # 6. 儲存模型權重與參數（先存，避免後面的圖表出錯時模型遺失）
+    # 7. 儲存模型權重與參數（先存，避免後面的圖表出錯時模型遺失）
     best_round = get_best_round(model)
-    meta = build_meta(target_col, data_input_path, best_round, metrics, split_info)
+    meta = build_meta(target_col, data_input_path, best_round, metrics, split_info, model_params, tune)
     validated_meta = {**meta, 'model_kind': 'validated (trained on train split, early stopping)',
                       'train_rows': len(X_train)}
     save_model_bundle(model, feature_cols, os.path.join(output_dir, "model_validated"), validated_meta)
     save_model_bundle(model, feature_cols, os.path.join(config.MODEL_EXPORT_DIR, mode, "latest_validated"),
                       validated_meta)
     if config.TRAIN_FINAL_MODEL:
-        final_model = train_final_model(pd.concat([X_train, X_test]), pd.concat([y_train, y_test]), best_round)
+        final_model = train_final_model(pd.concat([X_train, X_test]), pd.concat([y_train, y_test]), best_round,
+                                        model_params=model_params)
         final_meta = {**meta, 'model_kind': 'final (trained on all data, fixed rounds)',
                       'train_rows': len(X_train) + len(X_test)}
         save_model_bundle(final_model, feature_cols, os.path.join(output_dir, "model_final"), final_meta)
         save_model_bundle(final_model, feature_cols, os.path.join(config.MODEL_EXPORT_DIR, mode, "latest_final"),
                           final_meta)
 
-    # 7. 圖表（特徵重要性、逐輪指標趨勢、SHAP）
+    # 8. 圖表（特徵重要性、逐輪指標趨勢、SHAP）
     plot_xgb_importance(model, output_dir)
     round_df = compute_round_metrics(model, X_train, y_train, X_test, y_test)
     plot_round_metrics(round_df, model, output_dir)
@@ -135,10 +165,20 @@ def train_no2_xgboost(data_input_path, target_col=config.TARGET_COL, mode=config
 
 
 if __name__ == "__main__":
-    ap = argparse.ArgumentParser(description="XGBoost NO2 訓練（春季或全年），兩者的測試集相同")
+    ap = argparse.ArgumentParser(description="XGBoost NO2 訓練（春季或全年，測試集相同），可選用 Optuna 搜尋超參數")
     ap.add_argument('input_path', nargs='?', default=config.DEFAULT_INPUT_PATH,
                     help='資料路徑（資料夾 / 檔案 / 萬用字元）')
     ap.add_argument('--mode', choices=MODES, default=config.RUN_MODE,
                     help="spring：只用春季資料；full_year：用全年資料訓練、測試集與 spring 相同（預設取 config.RUN_MODE）")
+    ap.add_argument('--tune', action='store_true', help='先用 Optuna 搜尋最佳超參數（只用訓練資料），再用它訓練並評估')
+    ap.add_argument('--tune-only', action='store_true', help='只做 Optuna 搜尋並輸出報告，不訓練最終模型')
+    ap.add_argument('--params', default=None, metavar='PATH|latest',
+                    help="沿用先前搜尋的最佳參數：best_params.json 的路徑，或 'latest'（該組別最近一次搜尋）")
+    ap.add_argument('--n-trials', type=int, default=None, help='Optuna 試驗次數（預設 config.OPTUNA_N_TRIALS）')
+    ap.add_argument('--timeout', type=int, default=None, help='Optuna 總時間上限（秒）')
     args = ap.parse_args()
-    train_no2_xgboost(args.input_path, mode=args.mode)
+    if args.params and (args.tune or args.tune_only):
+        ap.error("--params 不能與 --tune / --tune-only 同時使用")
+    train_no2_xgboost(args.input_path, mode=args.mode, tune=args.tune or args.tune_only,
+                      tune_only=args.tune_only, params_path=args.params,
+                      n_trials=args.n_trials, timeout=args.timeout)

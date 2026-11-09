@@ -1,5 +1,5 @@
 {
-  "saved_at": "2026-11-07T10:52:29",
+  "saved_at": "2026-11-09T06:22:52",
   "feature_cols": [
     "Hr",
     "U",
@@ -22,13 +22,13 @@
   ],
   "target_col": "NO2_gnd",
   "input_data_path": "../../data/raw/nc_datas/data_2023/.ml-parquet",
-  "best_round": 133,
+  "best_round": 290,
   "test_metrics": {
-    "r (Correlation Coefficient)": 0.7314069792421541,
-    "R2 (Coefficient of Determination)": 0.5203934907913208,
-    "RMSE (Root Mean Square Error)": 4.9515110599425505,
-    "MD (Mean Deviation)": 0.7508940100669861,
-    "MAPE (%)": 75.23641967773438
+    "r (Correlation Coefficient)": 0.7320184097725118,
+    "R2 (Coefficient of Determination)": 0.5164433717727661,
+    "RMSE (Root Mean Square Error)": 4.971860092207871,
+    "MD (Mean Deviation)": 0.940193235874176,
+    "MAPE (%)": 76.45901489257812
   },
   "use_cyclic_time": false,
   "time_periods": {
@@ -38,6 +38,20 @@
   },
   "lag_hours": [],
   "allow_missing_lags": false,
+  "hyperparameters": {
+    "random_state": 42,
+    "n_jobs": -1,
+    "learning_rate": 0.011957796189313245,
+    "max_depth": 9,
+    "min_child_weight": 14.45184104723415,
+    "subsample": 0.6881919632196917,
+    "colsample_bytree": 0.6248230770394617,
+    "reg_lambda": 0.008579932382830944,
+    "reg_alpha": 1.6243080106130618,
+    "gamma": 4.812204818488933,
+    "n_estimators": 290
+  },
+  "tuned_by_optuna": true,
   "run_mode": "spring",
   "train_months": [
     3,

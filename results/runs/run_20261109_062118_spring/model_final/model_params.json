@@ -1,0 +1,145 @@
+{
+  "sklearn_params": {
+    "objective": "reg:squarederror",
+    "base_score": null,
+    "booster": null,
+    "callbacks": null,
+    "colsample_bylevel": null,
+    "colsample_bynode": null,
+    "colsample_bytree": 0.6248230770394617,
+    "device": null,
+    "early_stopping_rounds": null,
+    "enable_categorical": true,
+    "eval_metric": null,
+    "feature_types": null,
+    "feature_weights": null,
+    "gamma": 4.812204818488933,
+    "grow_policy": null,
+    "importance_type": null,
+    "interaction_constraints": null,
+    "learning_rate": 0.011957796189313245,
+    "max_bin": null,
+    "max_cat_threshold": null,
+    "max_cat_to_onehot": null,
+    "max_delta_step": null,
+    "max_depth": 9,
+    "max_leaves": null,
+    "min_child_weight": 14.45184104723415,
+    "missing": NaN,
+    "monotone_constraints": null,
+    "multi_strategy": null,
+    "n_estimators": 290,
+    "n_jobs": -1,
+    "num_parallel_tree": null,
+    "random_state": 42,
+    "reg_alpha": 1.6243080106130618,
+    "reg_lambda": 0.008579932382830944,
+    "sampling_method": null,
+    "scale_pos_weight": null,
+    "subsample": 0.6881919632196917,
+    "tree_method": null,
+    "validate_parameters": null,
+    "verbosity": null
+  },
+  "booster_config": {
+    "learner": {
+      "generic_param": {
+        "device": "cpu",
+        "fail_on_invalid_gpu_id": "0",
+        "n_jobs": "-1",
+        "nthread": "-1",
+        "random_state": "42",
+        "rng_state": "79c34c0a 460be59c 83dd9e37 4f8cca30 ee17009d eab9ce9f 812401d6 b4fb2eef 17b15acd 3a2b8a2e 6f622474 d26e0178 d28e6ad7 a5279bf5 d2d8b9c5 c7564371 bf3ea04e 6991ec51 f4390de6 e0350ab0 a68c05f7 2a217902 b004d224 cd674159 d2bf4de 12746bf3 d58a43d ed887370 68c319bf 99f1d857 ef82d8eb 530bbdeb f5aa29b6 7c6753ce ff46da11 3025ad81 533e7f4d d4dbe765 561e3a8 9c0bbbb3 a5e9c841 4f3cdfdc 31dc999f 197b52a 2b26e943 494363a5 f8936fe9 79beb9e4 c73f6d5f bd6659ea 4822dab7 9dd6a2f2 54321dd9 e576baa6 92f54201 69fadd68 cb81f443 dcc086be 235dd83 ac7a21eb 5dc977b5 4c9b31a5 29ab64aa f6365be1 17a5b172 f92f8f59 f6dee6ce 477439e5 2d717802 1180b79a c023c24b 9ce2935f 2002195f 2c2c7d34 ee8a17ea a3ad0484 a99fe1cf 20b37a73 239a62cc d84ae9a 8201eff2 35ed8711 b8fef3cd 5e7a098e bc15c1aa c2414cc0 459766a8 30740b02 2d44136b 7702c031 a2bbb54b 4276b3bd 7f04fb92 e029abc4 644fa71a d85fb1d8 4173e209 ee589483 69c3c027 eba24857 39c16479 866b47cf 8cd6357 406f2189 b6d0470 7fa57ba3 82d13e5a 948f2078 8afc6583 3daea41c 7d41e984 73143e12 a5652ad2 df0c2d04 cb443d4a 2c037fbc 5df694a4 363a9d0f 9a1c5dff 599aa493 4c404211 ce2840bf 12baeb0 17e0cc98 e225e235 456426a5 1edcdf5 6f6b9927 4b06cbc4 7de603fa 688a053f b7a023d3 6595d396 294261d4 363da235 eb845f5f 64048f63 7db0ead5 93736421 7f9800fb 8d8ee548 6dff56bc 6c1f0781 ac37932 237ef3ed a9a4eaeb 56e1f77c 6363760d fbd04609 b5fa3645 d369275d 3c7c21a9 66a90c6f 92d60994 1239cee9 c36001e8 bc96f0b0 4fab0aae 570704bc 2a9e4066 1230019d c7b9820e 24a24b3c e56f8128 c796e673 ff59b8b 5173186f bbf44d6d 49a733d8 a16d1f39 5ad565e0 9bdf4a0 73656f2c 456a0322 8e1f8030 babae599 e6895206 d488fb a8c1a7ed 58abe643 e86acb5c cf115873 398dc757 60c04998 bbaac5e3 9be39337 3b5a6610 c3103cc8 e693316b 54f867d4 45a6c062 b6e7005 f64c2868 6d334ae8 a2bc4b83 3be7afc5 2c5e55b6 90d25df9 c328e225 776ccbb8 f1d40617 4f8d23f6 c23dd8f9 951de2e 77129968 5fd1fa10 2ff5be94 61e357a2 9ac4b01a ed79319d 2d62e262 a8febf1a 1ebb1d92 b1673894 4f32c040 56bb4ad3 4afc3ab 28f06770 55fc342c c7c0c358 c098741c d972af1c 7b04397f c417b415 d84ab415 e83960b2 b3817c47 7b137cb9 ac132dd5 89fc47bc e5174ddb fa1c9b7f 499f0cc8 9071f9d1 45238e8d 6f9e6c41 649b359a 23245bbe 43df34b4 216f3d26 7d6677c7 4afb4a8c f30cf635 5f8426de c211e801 8448378d c7d51eff 1f7ba6b 964d2908 e2eefa2f 56735e38 8fb08d11 4b175a23 3b225344 fece5ba9 cb2ac1d 9973f850 91210022 3a28e9ed 41b7b815 f7ca7149 1f5949f2 f38a9120 85f1e5a9 c415e60d cbed5df 5b6ca991 47ca9610 a2dccad8 505d80ec 3b21efa9 81d4cc4f e89bd4cb d894ada1 49bd4a6a 4bfc07ac e70bb402 6b2ade4a ac12830b c558c063 ba69cb3b a08a9a69 2dd98aff ef73aa48 e883443c 9a587929 f678cb1b 62b8569f 1809ef81 10658c05 b5daf435 76e8edf7 da80fdf1 32e124cd e136284 1c258ec1 6a644621 29e2df07 359005fe 40463ec4 5b62b3c1 4e0d2fe9 29470f16 f598e85 d6eba34a 335bc8d 349a9341 180000b0 33c10439 db21437f 35c34f59 25fbb67e b89beaeb a8c61bbc e669f0e4 c97fc9e6 bb7e2ea9 74f9694d 2efefdc9 9cf61d28 309a82e5 ed2563b6 bc1509e0 81d8a66d 94984822 924700a7 36b65b2b da99d28c 27671e30 125f7978 ef97ed4c 376de4a2 67cfa1be 817dad58 275782fc a89a94fa 3b876f1e 4c6ec3d9 4cc27ee5 357d0fb4 d2b1f540 81c27d84 ec449623 8122e096 6bc95f6a def36bf4 d40b21a2 e09c98fe 47d165e8 bd32959c 959e3e3f 9a092e3 b1859db8 3f67bbd0 9b23ca5 f00cd883 bd28dfdc e9efb16c 97e95f5f 96193eb8 de445145 2eb9ff50 d63b293 11b8d5d9 5547f060 39c4ff42 dc676de9 bb96d2cb 322b6b23 4b1060df 4fc11de3 ce253f4 948fbadf e89b7a78 f2425dde 91a10af 67829f9 b729830c 65df4943 41aa9295 898d4e69 7e548dfc e4f8784d 545ec77f cc0f638b e4bd3a9c 906712ff 56474432 4d931766 e50ff7ce f68f2909 d11418c0 a01c6319 11d52ac4 1ba07c94 7b017976 83354530 ce90cecf 614730d9 b9325f4f 32abb7d4 511e6937 e302bc9a b2e26278 cb6b21eb 2c70ac20 524ed3c1 ecf4645c 25507db7 2d1d8009 d7678f8a dacbced7 e15c1d63 995f3640 6b97ac33 d035c385 7e9c9c87 c1312891 5a22d42a 8a174c8a 18764716 305c3f9 bf51b9cc c833422a 43b1a2ee 20ab8244 9b7ce87d b2fc7b70 895a9cd7 5bb36a8f 5db76792 3f8af43b 8d3b4ed3 c5d0e7ad a471009b 7340e25c 2b713ffe aaeff31e ef548378 5594d347 7f378621 825fc82f 3c68169c 8c5104d1 3b3b21e4 63f83901 9b1d4080 957b527b 68ea2cb daff2805 28048eb5 d63e2ff2 63f0f182 66694afd 4054a4e0 37895c97 832e6ace a47437f5 10ff77fa 6722969a cadcea93 41476556 e3909da6 ff79fdd9 7c783bc8 799401d5 378880ed be28c41 4144fde9 9c8f297c 7103c88b 1f629872 8deee2e8 cf1d204f 8fa3e6f3 1d4a655a eaba2403 15efe3a2 233c0555 28bde5bf d0d895d 528dd91c 8831826f 7ccc23e5 c96ab53 d22301a8 dc4d5755 7eea57dd 11db7dda c7d56d87 9f5937dc fe7b4004 68035b64 f3283114 ade3b907 f79956f7 f701f65e 25bc714d 7aa742ac fa0a7e5b 703346ca 6d93c883 1f3f948c c7ce9884 3f794b96 85225fb8 ec13635a 1ea2d7f3 68668120 fee17d0e b802a86f d44efd71 822b6cd7 9c5eee9d 6d771fe3 718f0bbc 126efab5 ee3b79f7 c2c79d5f bb68e88d 6e9e003f 4187fd4a b0e7752b 131ec655 ca05860 d31a73c0 a268d94a 71737f26 39f79d8a aa579e7d 827eb2f 92180321 f5e00894 27b04a52 c498f760 dd91f8c8 51f55ebc 9cb7f233 bcc940c1 74c128db 9f501f4a 68f42082 b0c2afa2 632d9593 53696d4b c3d85666 71169dc ea2e967a cc33b159 36725dc5 bc50403f 5d1ef792 ca14bab0 708e6a86 5ded4d13 d77c9db8 9d3a18f4 673e9be1 3445f60c 2057a6b3 44612939 e130fe33 d951f591 f6c73149 1c5ef11d 21500b5b 6b757ea7 ebed3dc5 eb4bf849 3a3f9dc9 b96c1e35 df2998bc 2259e41b 872009fc 2eaeeda5 f45a83e7 7ec43f3c 75752993 c7233139 26bfded0 dec6022 d7311be4 ad9f76f8 cdd1feec ea8f3cdd 9b2bffbb 80ef164 363a1216 e6aec33e 8af302d4 61c436f8 aefac1db ad5ade1b 6d9a3895 2ec2b776 f5a92b29 4499a60f 43b1dcc6 b636e285 82fb7263 25389200 2fd27846 421930c7 1135bd9 567f82ce 58302fc9 348e0f36 7dba5600 f73ccbcb 21362828 138545ea 9888da0b 7ecb042 cb5af1e2 c08fd463 a2bd8282 53910374 dd2920f1 feb7746a 1e5e4d22 bf692f0f 6566d3fe 692dcdd0 ffd4e335",
+        "seed": "42",
+        "seed_per_iteration": "0",
+        "validate_parameters": "1"
+      },
+      "gradient_booster": {
+        "dart_train_param": {
+          "normalize_type": "tree",
+          "one_drop": "0",
+          "rate_drop": "0",
+          "sample_type": "uniform",
+          "skip_drop": "0"
+        },
+        "gbtree_model_param": {
+          "num_parallel_tree": "1",
+          "num_trees": "290"
+        },
+        "gbtree_train_param": {
+          "process_type": "default",
+          "tree_method": "auto",
+          "updater": "grow_quantile_histmaker",
+          "updater_seq": "grow_quantile_histmaker"
+        },
+        "name": "gbtree",
+        "specified_updater": false,
+        "tree_train_param": {
+          "alpha": "1.62430799",
+          "colsample_bylevel": "1",
+          "colsample_bynode": "1",
+          "colsample_bytree": "0.624823093",
+          "eta": "0.0119577963",
+          "gamma": "4.81220484",
+          "grow_policy": "depthwise",
+          "interaction_constraints": "",
+          "lambda": "0.00857993215",
+          "learning_rate": "0.0119577963",
+          "max_bin": "256",
+          "max_cat_threshold": "64",
+          "max_cat_to_onehot": "4",
+          "max_delta_step": "0",
+          "max_depth": "9",
+          "max_leaves": "0",
+          "min_child_weight": "14.4518414",
+          "min_split_loss": "4.81220484",
+          "monotone_constraints": "()",
+          "refresh_leaf": "1",
+          "reg_alpha": "1.62430799",
+          "reg_lambda": "0.00857993215",
+          "sampling_method": "uniform",
+          "sparse_threshold": "0.20000000000000001",
+          "subsample": "0.68819195"
+        },
+        "updater": [
+          {
+            "hist_train_param": {
+              "debug_synchronize": "0",
+              "max_cached_hist_node": "18446744073709551615"
+            },
+            "name": "grow_quantile_histmaker"
+          }
+        ]
+      },
+      "learner_model_param": {
+        "base_score": "[9.59416E0]",
+        "boost_from_average": "1",
+        "num_class": "0",
+        "num_feature": "18",
+        "num_target": "1"
+      },
+      "learner_train_param": {
+        "booster": "gbtree",
+        "disable_default_eval_metric": "0",
+        "multi_strategy": "one_output_per_tree",
+        "objective": "reg:squarederror"
+      },
+      "metrics": [
+        {
+          "name": "rmse"
+        }
+      ],
+      "objective": {
+        "name": "reg:squarederror",
+        "reg_loss_param": {
+          "scale_pos_weight": "1"
+        }
+      }
+    },
+    "version": [
+      3,
+      4,
+      1
+    ]
+  }
+}

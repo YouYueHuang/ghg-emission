@@ -88,6 +88,36 @@ MODEL_PARAMS = {
 }
 FIT_VERBOSE = 100
 
+# ===== Optuna 超參數搜尋 =====
+# 用法：python run_no2_xgb.py --mode spring --tune        （搜尋後直接用最佳參數訓練）
+#       python run_no2_xgb.py --mode spring --tune-only   （只搜尋、輸出報告）
+#       python run_no2_xgb.py --mode spring --params latest（沿用該組別最近一次的最佳參數）
+# 搜尋只用「訓練資料」內部的時間序列交叉驗證，測試集完全不參與，確保測試指標沒有被調參污染
+OPTUNA_N_TRIALS = 50
+OPTUNA_TIMEOUT = None              # 總時間上限（秒）；None = 不限，只看 OPTUNA_N_TRIALS
+OPTUNA_METRIC = 'rmse'             # 優化目標：'rmse'、'mae'（越小越好）或 'r2'（越大越好）
+OPTUNA_CV_FOLDS = 3                # 時間序列交叉驗證的摺數（擴展視窗：每摺用更早的資料訓練、之後一段時間驗證）
+OPTUNA_DATE_COL = 'monitordate'    # 以「日期」為單位切摺，避免同一天的資料同時出現在訓練與驗證；欄位不存在時改用列順序
+OPTUNA_MAX_ROUNDS = 2000           # 每摺訓練的樹數上限（搭配 early stopping）
+OPTUNA_EARLY_STOPPING = 50         # 每摺以驗證集做 early stopping
+OPTUNA_FINAL_ROUNDS_SCALE = 1.1    # 最終模型的樹數 = 最佳試驗各摺最佳輪次平均 × 此值（最終用較多資料訓練）
+OPTUNA_SEED = 42
+OPTUNA_STARTUP_TRIALS = 10         # TPE 取樣器：前幾次試驗先隨機探索
+OPTUNA_PRUNER_STARTUP_TRIALS = 5   # 中位數剪枝：前幾次試驗不剪枝
+OPTUNA_STORAGE = None              # 例如 "sqlite:///../../results/tuning/optuna_no2.db"，可中斷後續跑；None = 只存在記憶體
+OPTUNA_EXPORT_DIR = "../../results/tuning"   # 最佳參數另存於 <此處>/<組別>/best_params.json（每次覆蓋，供 --params latest 使用）
+# 搜尋空間：參數名稱 -> (型別 'float' / 'int', 下限, 上限, 是否取對數尺度)
+OPTUNA_SEARCH_SPACE = {
+    'learning_rate':    ('float', 0.01, 0.2, True),
+    'max_depth':        ('int', 3, 10, False),
+    'min_child_weight': ('float', 1.0, 20.0, True),
+    'subsample':        ('float', 0.5, 1.0, False),
+    'colsample_bytree': ('float', 0.5, 1.0, False),
+    'reg_lambda':       ('float', 1e-3, 10.0, True),
+    'reg_alpha':        ('float', 1e-3, 10.0, True),
+    'gamma':            ('float', 0.0, 5.0, False),
+}
+
 # ===== 圖表 =====
 FIG_DPI = 300
 IMPORTANCE_MAX_FEATURES = 18
