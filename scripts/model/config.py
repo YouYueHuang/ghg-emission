@@ -84,7 +84,7 @@ MODEL_PARAMS = {
     'colsample_bytree': 0.8,
     'random_state': 42,
     'n_jobs': -1,
-    'early_stopping_rounds': 50,
+    'early_stopping_rounds': None,
 }
 FIT_VERBOSE = 100
 

@@ -1,2 +1,0 @@
-﻿execution_timestamp,input_data_path,train_samples,test_samples,run_mode,train_months,test_months,spring_months,full_year_only_past,train_rows,test_rows,test_set_fingerprint,n_estimators,learning_rate,max_depth,subsample,colsample_bytree,random_state,n_jobs,early_stopping_rounds
-20261107_105216,../../data/raw/nc_datas/data_2023/.ml-parquet,32971,8243,spring,"[3, 4, 5]",[5],"[3, 4, 5]",,32971,8243,3e9e2230c6c9,1000,0.03,6,0.8,0.8,42,-1,50

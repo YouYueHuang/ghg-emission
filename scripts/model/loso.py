@@ -12,6 +12,7 @@
 import os
 import re
 import json
+import zlib
 import warnings
 import numpy as np
 import pandas as pd
@@ -111,10 +112,12 @@ def run_loso(d_clean, feature_cols, target_col, params, station_col=None, statio
         is_te = ids == st
         rest = [s for s in all_stations if s != st]
         is_val = np.zeros(len(ids), dtype=bool)
+        val_list = []
         if use_es_requested and len(rest) >= 3:
-            rng = np.random.RandomState(seed + k)
+            rng = np.random.RandomState((seed + zlib.crc32(str(st).encode('utf-8'))) % (2 ** 32))   # 種子只取決於測站本身，與 --stations 的內容、順序無關
             val_st = rng.choice(rest, max(1, int(round(val_frac * len(rest)))), replace=False)
             is_val = np.isin(ids, val_st)
+            val_list = sorted(str(v) for v in val_st)
         is_tr = ~is_te & ~is_val
         X_va = X[is_val] if is_val.any() else None
         y_va = y[is_val] if is_val.any() else None
@@ -134,6 +137,7 @@ def run_loso(d_clean, feature_cols, target_col, params, station_col=None, statio
         rows.append({
             'station': st, 'name': name, 'n_test': int(is_te.sum()), 'n_train': int(is_tr.sum()),
             'n_val_stations': int(len(np.unique(ids[is_val]))) if is_val.any() else 0,
+            'val_stations': ','.join(val_list),
             'rounds': rounds, **m,
             'lat': float(sub[lat_col].mean()) if lat_col else np.nan,
             'lon': float(sub[lon_col].mean()) if lon_col else np.nan,
