@@ -34,9 +34,9 @@
 | **最終保留（進入 LOSO 訓練/測試切分）** | - | **41,214** |
 
 ### 2.2 月份過濾明細
-* **2023-03**：共 18,600 列，移除 5,495 列（$29.5\%$），保留 13,105 列
-* **2023-04**：共 17,400 列，移除 2,638 列（$15.2\%$），保留 14,762 列
-* **2023-05**：共 18,600 列，移除 5,253 列（$28.2\%$），保留 13,347 列
+* **2023-03**：共 18,600 列，移除 5,495 列（ 29.5\% ），保留 13,105 列
+* **2023-04**：共 17,400 列，移除 2,638 列（ 15.2\% ），保留 14,762 列
+* **2023-05**：共 18,600 列，移除 5,253 列（ 28.2\% ），保留 13,347 列
 
 ---
 
@@ -51,29 +51,42 @@
 | **42 嘉義** | 555 | 40,659 | 0.528 | 2.390 | +1.030 |
 | **53 楠梓** | 559 | 40,655 | 0.644 | 2.731 | +0.618 |
 
-
 <table>
+  <!-- 新增的總標題列 -->
+  <tr>
+    <td colspan="2" align="center">
+      <h3>📈 留一測站交叉驗證（LOSO）各測站時間序列對比圖 <br>
+      Time-series comparison of observed and predicted values </h3>
+    </td>
+  </tr>
+  <!-- 第一列圖片 -->
   <tr>
     <td align="center">
       <img src="./run_20261109_200940_loso_spring/timeseries/loso_15.png" width="300"><br>
-      <b>松山站：真實值對比預測值散布圖</b>
-    </td>
-    <td align="center">
-      <img src="./run_20261109_200940_loso_spring/timeseries/loso_31.png" width="300"><br>
-      <b>忠明站：真實值對比預測值散布圖</b>
+      <b>松山站</b>
     </td>
   </tr>
   <tr>
     <td align="center">
-      <img src="./run_20261109_200940_loso_spring/timeseries/loso_42.png" width="300"><br>
-      <b>嘉義站：真實值對比預測值散布圖</b>
+      <img src="./run_20261109_200940_loso_spring/timeseries/loso_31.png" width="300"><br>
+      <b>忠明站</b>
     </td>
+  </tr>
+  <!-- 第二列圖片 -->
+  <tr>
+    <td align="center">
+      <img src="./run_20261109_200940_loso_spring/timeseries/loso_42.png" width="300"><br>
+      <b>嘉義站</b>
+    </td>
+  </tr>
+  <tr>
     <td align="center">
       <img src="./run_20261109_200940_loso_spring/timeseries/loso_53.png" width="300"><br>
-      <b>楠梓站：真實值對比預測值散布圖</b>
+      <b>楠梓站</b>
     </td>
   </tr>
 </table>
+
 
 ---
 
