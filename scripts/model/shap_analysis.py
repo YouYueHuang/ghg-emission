@@ -15,47 +15,57 @@ def compute_shap_values(model, X_test):
     return explainer(X_sample), X_sample
 
 
-def plot_beeswarm(shap_values, X_sample, shap_dir):
+def _title(base, label):
+    return f"{base}\n{label}" if label else base
+
+
+def plot_beeswarm(shap_values, X_sample, shap_dir, label=None):
     plt.subplots(figsize=(10, 8), dpi=config.FIG_DPI)
     shap.summary_plot(shap_values, X_sample, show=False)
-    plt.title("SHAP Summary Plot for NO2 Prediction", fontsize=14)
+    plt.title(_title("SHAP Summary Plot for NO2 Prediction", label), fontsize=14)
     plt.savefig(os.path.join(shap_dir, "shap_summary_beeswarm.png"),
                 bbox_inches='tight', dpi=config.FIG_DPI)
     plt.close()
 
 
-def plot_bar(shap_values, X_sample, shap_dir):
+def plot_bar(shap_values, X_sample, shap_dir, label=None):
     plt.subplots(figsize=(10, 8), dpi=config.FIG_DPI)
     shap.summary_plot(shap_values, X_sample, plot_type="bar", show=False)
-    plt.title("SHAP Feature Importance (Mean Absolute)", fontsize=14)
+    plt.title(_title("SHAP Feature Importance (Mean Absolute)", label), fontsize=14)
     plt.savefig(os.path.join(shap_dir, "shap_feature_importance_bar.png"),
                 bbox_inches='tight', dpi=config.FIG_DPI)
     plt.close()
 
 
-def plot_dependence(shap_values, X_sample, shap_dir):
+def plot_dependence(shap_values, X_sample, shap_dir, label=None):
     feature = (config.SHAP_DEPENDENCE_FEATURE
                if config.SHAP_DEPENDENCE_FEATURE in X_sample.columns
                else X_sample.columns[0])
     fig, ax = plt.subplots(figsize=(8, 6), dpi=config.FIG_DPI)
     shap.dependence_plot(feature, shap_values.values, X_sample, ax=ax, show=False)
-    plt.title(f"SHAP Dependence Plot: {feature}", fontsize=14)
+    plt.title(_title(f"SHAP Dependence Plot: {feature}", label), fontsize=14)
     plt.savefig(os.path.join(shap_dir, f"shap_dependence_{feature}.png"),
                 bbox_inches='tight', dpi=config.FIG_DPI)
     plt.close()
 
 
-def generate_shap_plots(model, X_test, output_dir):
-    """計算並產出全部 SHAP 圖表，存入 output_dir/SHAP_Analysis。"""
-    print("=" * 75)
-    print("🔬 開始計算 SHAP Values 並繪製解釋性圖表...")
-    print("=" * 75)
+def generate_shap_plots(model, X_test, output_dir, label=None, folder="SHAP_Analysis", verbose=True):
+    """
+    計算並產出全部 SHAP 圖表，存入 output_dir/<folder>（folder 為空字串時直接存在 output_dir）。
+    label 會附在圖標題（例如測站名稱）。回傳 (shap_values, X_sample)。
+    """
+    if verbose:
+        print("=" * 75)
+        print("🔬 開始計算 SHAP Values 並繪製解釋性圖表...")
+        print("=" * 75)
 
-    shap_dir = os.path.join(output_dir, "SHAP_Analysis")
+    shap_dir = os.path.join(output_dir, folder) if folder else output_dir
     os.makedirs(shap_dir, exist_ok=True)
 
     shap_values, X_sample = compute_shap_values(model, X_test)
-    plot_beeswarm(shap_values, X_sample, shap_dir)
-    plot_bar(shap_values, X_sample, shap_dir)
-    plot_dependence(shap_values, X_sample, shap_dir)
-    print(f"✅ 所有 SHAP 圖表已儲存至: {shap_dir}")
+    plot_beeswarm(shap_values, X_sample, shap_dir, label)
+    plot_bar(shap_values, X_sample, shap_dir, label)
+    plot_dependence(shap_values, X_sample, shap_dir, label)
+    if verbose:
+        print(f"✅ 所有 SHAP 圖表已儲存至: {shap_dir}")
+    return shap_values, X_sample

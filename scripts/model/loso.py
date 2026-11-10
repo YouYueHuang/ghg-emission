@@ -66,10 +66,11 @@ def _fit_fold(X_tr, y_tr, X_va, y_va, params):
 
 
 def run_loso(d_clean, feature_cols, target_col, params, station_col=None, stations=None,
-             min_rows=None, val_frac=None, seed=None):
+             min_rows=None, val_frac=None, seed=None, fold_callback=None):
     """
     對每個測站做留一測站訓練與預測。回傳 (逐筆預測 DataFrame, 各測站指標 DataFrame, 摘要 dict)。
     stations 可指定只做哪幾個測站（以測站欄位的值，字串比對）。
+    fold_callback(station, name, model, rounds, used_es, X_te, y_te, pred) 會在每一摺結束後呼叫（例如做 SHAP），模型不會被保留。
     """
     station_col = station_col or config.LOSO_STATION_COL
     min_rows = config.LOSO_MIN_STATION_ROWS if min_rows is None else min_rows
@@ -126,6 +127,10 @@ def run_loso(d_clean, feature_cols, target_col, params, station_col=None, statio
         X_te, y_te = X[is_te], y[is_te]
         pred = model.predict(X_te, iteration_range=(0, rounds)) if used_es else model.predict(X_te)
 
+        name = str(d.loc[is_te, name_col].iloc[0])
+        if fold_callback is not None:
+            fold_callback(st, name, model, rounds, used_es, X_te, y_te, pred)
+
         with warnings.catch_warnings():
             warnings.simplefilter('ignore', category=RuntimeWarning)
             m = _short(calculate_evaluation_metrics(y_te.to_numpy(), pred))
@@ -133,7 +138,6 @@ def run_loso(d_clean, feature_cols, target_col, params, station_col=None, statio
         sub['obs'], sub['pred'] = y_te.to_numpy(), np.asarray(pred, dtype='float64')
         pred_parts.append(sub)
 
-        name = str(sub[name_col].iloc[0])
         rows.append({
             'station': st, 'name': name, 'n_test': int(is_te.sum()), 'n_train': int(is_tr.sum()),
             'n_val_stations': int(len(np.unique(ids[is_val]))) if is_val.any() else 0,
@@ -142,6 +146,7 @@ def run_loso(d_clean, feature_cols, target_col, params, station_col=None, statio
             'lat': float(sub[lat_col].mean()) if lat_col else np.nan,
             'lon': float(sub[lon_col].mean()) if lon_col else np.nan,
             'obs_mean': float(y_te.mean()),
+            'pred_mean': float(np.mean(pred)),
         })
         print(f"   [{k:>3}/{len(targets)}] {st} {name}: n={int(is_te.sum())}, 訓練 {int(is_tr.sum())} 列, "
               f"R²={m['R2']:.3f}, RMSE={m['RMSE']:.3f}, MD={m['MD']:.3f}")

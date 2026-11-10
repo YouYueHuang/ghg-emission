@@ -128,6 +128,9 @@ LOSO_VAL_STATION_FRAC = 0.15       # 設定了 early stopping 時，從「其餘
 LOSO_GAP_HOURS = 1.5               # 時間序列圖中，相鄰兩點超過此小時數就斷線（夜間、衛星缺值）
 LOSO_ZOOM_DAYS = 14                # 逐小時圖只畫資料最多的連續 N 天（整段期間太密看不清楚）；0 = 畫全部
 LOSO_SEED = 42
+LOSO_MIN_POINTS_PER_HOUR = 10       # 逐測站、逐小時散布圖：該測站該小時的資料點少於此數就不畫
+LOSO_MAP_LABELS = 'value'           # 測站分佈圖上的標註：'value'（只標數值）、'name_value'（測站名稱 + 數值）、'none'（不標）
+LOSO_MAP_LABEL_FONTSIZE = 7
 PLOT_CJK_FONTS = ['Microsoft JhengHei', 'Noto Sans CJK TC', 'PingFang TC', 'Arial Unicode MS']   # 測站名稱含中文時使用
 
 # ===== 圖表 =====

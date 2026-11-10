@@ -68,7 +68,7 @@ def plot_station_timeseries(sub, row, out_path):
     axes[1].set_xlabel(xlabel)
 
     txt = (f"r = {row['r']:.3f}\nR² = {row['R2']:.3f}\nRMSE = {row['RMSE']:.3f}\n"
-           f"MD = {row['MD']:.3f}\nMAPE = {row['MAPE']:.1f}%\nN = {int(row['n_test'])} (hourly, all)")
+           f"MD = {row['MD']:.3f}\nMAPE = {row['MAPE']:.1f}%\nN = {int(row['n_test'])}\n(hourly, whole period)")
     axes[0].text(0.01, 0.97, txt, transform=axes[0].transAxes, va='top', ha='left', fontsize=9,
                  bbox=dict(boxstyle='round,pad=0.4', facecolor='white', edgecolor='gray', alpha=0.9), zorder=10)
     fig.suptitle(f"Leave-one-station-out: {row['name']} ({row['station']})", fontsize=13)
@@ -111,11 +111,32 @@ def plot_station_metrics(metrics_df, output_dir):
     print(f"✅ 各測站指標圖已儲存至: {path}")
 
 
-def plot_station_map(metrics_df, output_dir, value='R2'):
-    """測站位置，顏色表示 R²（或 RMSE）；有 geopandas 與縣市界檔時疊上縣市邊界。"""
+_MAP_STYLE = {   # 欄位 -> (色階, 色階標籤)
+    'R2': ('RdYlGn', 'R² (hourly, whole period)'),
+    'RMSE': ('RdYlGn_r', f'RMSE ({config.SCATTER_UNIT})'),
+    'obs_mean': ('Spectral_r', f'Observed seasonal mean ({config.SCATTER_UNIT})'),
+    'pred_mean': ('Spectral_r', f'Predicted seasonal mean ({config.SCATTER_UNIT})'),
+    'MD': ('RdBu_r', f'Mean deviation, pred - obs ({config.SCATTER_UNIT})'),
+}
+
+
+_MAP_FORMAT = {'R2': '.2f', 'RMSE': '.2f', 'obs_mean': '.1f', 'pred_mean': '.1f', 'MD': '.2f'}   # 標註的小數位數
+
+
+def plot_station_map(metrics_df, output_dir, value='R2', vlim=None):
+    """
+    測站位置，顏色表示 value（R2、RMSE、obs_mean、pred_mean、MD），每個測站旁標註數值（見 config.LOSO_MAP_LABELS）。
+    指標（R2、RMSE、MD）來自整段期間的逐小時預測；obs_mean / pred_mean 是整段期間的平均。
+    vlim=(vmin, vmax) 可讓多張圖共用色階（例如實測與預測的季節平均）。有 geopandas 與縣市界檔時疊上縣市邊界。
+    """
     m = metrics_df.dropna(subset=['lat', 'lon'])
     if m.empty:
         return None
+    cmap, label = _MAP_STYLE[value]
+    vmin, vmax = vlim if vlim else (None, None)
+    if value == 'MD' and vlim is None:
+        v = float(np.abs(m['MD']).max())
+        vmin, vmax = -v, v
     fig, ax = plt.subplots(figsize=(7, 9), dpi=config.FIG_DPI)
     try:
         import geopandas as gpd
@@ -124,18 +145,131 @@ def plot_station_map(metrics_df, output_dir, value='R2'):
         counties.boundary.plot(ax=ax, color='gray', linewidth=0.5, zorder=1)
     except Exception as e:
         print(f"[資訊] 略過縣市邊界（{e}）")
-    sc = ax.scatter(m['lon'], m['lat'], c=m[value], cmap='RdYlGn' if value == 'R2' else 'RdYlGn_r',
+    sc = ax.scatter(m['lon'], m['lat'], c=m[value], cmap=cmap, vmin=vmin, vmax=vmax,
                     s=70, edgecolor='black', linewidth=0.5, zorder=3)
+    # 在每個測站旁標上數值（可選擇連同測站名稱；測站密集處標籤可能互相靠近）
+    if config.LOSO_MAP_LABELS != 'none':
+        import matplotlib.patheffects as pe
+        fmt = _MAP_FORMAT.get(value, '.2f')
+        for _, r_ in m.iterrows():
+            txt = format(r_[value], fmt)
+            if config.LOSO_MAP_LABELS == 'name_value':
+                txt = f"{r_['name']}\n{txt}"
+            ax.annotate(txt, (r_['lon'], r_['lat']), xytext=(4, 4), textcoords='offset points',
+                        fontsize=config.LOSO_MAP_LABEL_FONTSIZE, zorder=5,
+                        path_effects=[pe.withStroke(linewidth=2, foreground='white')])
     pad = 0.15
     ax.set_xlim(m['lon'].min() - pad, m['lon'].max() + pad)
     ax.set_ylim(m['lat'].min() - pad, m['lat'].max() + pad)
     ax.set_aspect('equal')
     ax.set_xlabel('Longitude')
     ax.set_ylabel('Latitude')
-    ax.set_title(f'Leave-one-station-out: {value} by station')
-    fig.colorbar(sc, ax=ax, shrink=0.75, label=value if value != 'R2' else 'R²')
+    ax.set_title(f'Leave-one-station-out: {label}', fontsize=11)
+    fig.colorbar(sc, ax=ax, shrink=0.75, label=label)
     path = os.path.join(output_dir, f"loso_station_map_{value}.png")
     fig.savefig(path, bbox_inches='tight', dpi=config.FIG_DPI)
     plt.close(fig)
     print(f"✅ 測站空間分佈圖已儲存至: {path}")
+    return path
+
+
+def plot_seasonal_mean_maps(metrics_df, output_dir):
+    """季節平均的測站分佈圖：實測與預測共用色階，另加偏差圖。"""
+    m = metrics_df.dropna(subset=['lat', 'lon'])
+    if m.empty:
+        return
+    vlim = (float(min(m['obs_mean'].min(), m['pred_mean'].min())), float(max(m['obs_mean'].max(), m['pred_mean'].max())))
+    plot_station_map(metrics_df, output_dir, 'obs_mean', vlim=vlim)
+    plot_station_map(metrics_df, output_dir, 'pred_mean', vlim=vlim)
+    plot_station_map(metrics_df, output_dir, 'MD')
+
+
+def plot_all_scatter(preds, metrics_df, output_dir, station_col):
+    """
+    每個測站一張散布圖（格式同 ground_truth_vs_model_*.png）：
+    橫軸實測、縱軸移除該測站後的預測，使用整段期間「所有逐小時」的點，
+    r、R²、RMSE、MD、MAPE、N 都由這些逐小時資料計算（不使用每日平均）。所有測站共用同一組座標範圍。
+    """
+    from loso import safe_name
+    from scatter_plot import plot_obs_vs_model, axis_limits
+    out_dir = os.path.join(output_dir, "scatter")
+    lim = axis_limits(preds['obs'].to_numpy(), preds['pred'].to_numpy())
+    ids = preds[station_col].astype(str)
+    for _, row in metrics_df.iterrows():
+        sub = preds[ids == row['station']]
+        plot_obs_vs_model(sub['obs'], sub['pred'], out_dir, name=f"loso_{safe_name(row['station'])}",
+                          title_suffix=f"LOSO, {row['name']} ({row['station']}), hourly, whole period", lim=lim)
+    print(f"✅ 已輸出 {len(metrics_df)} 張測站散布圖至: {out_dir}")
+
+
+def plot_station_hour_scatter(preds, metrics_df, output_dir, station_col):
+    """
+    每個測站、每個小時（Hr）各一張散布圖，例如 4 個測站、8 個小時 = 32 張。
+    每張圖的點是「該測站該小時」整個期間的逐日資料，r、R²、RMSE、MD、MAPE、N 都由這些點計算。
+    所有圖共用同一組座標範圍。同時輸出 loso_station_hour_metrics.csv。
+    """
+    from loso import safe_name
+    from scatter_plot import plot_obs_vs_model, axis_limits, _hour_tag
+    from metrics import calculate_evaluation_metrics
+    import warnings
+    hour_col = first_existing(preds.columns, config.HOUR_COL_CANDIDATES)
+    if hour_col is None:
+        print(f"[警告] 找不到小時欄位（候選 {config.HOUR_COL_CANDIDATES}），略過逐測站逐小時散布圖")
+        return None
+    lim = axis_limits(preds['obs'].to_numpy(), preds['pred'].to_numpy())
+    ids = preds[station_col].astype(str)
+    rows, n_fig = [], 0
+    for _, srow in metrics_df.iterrows():
+        sub_st = preds[ids == srow['station']]
+        out_dir = os.path.join(output_dir, "scatter_by_hour", safe_name(srow['station']))
+        for h in sorted(sub_st[hour_col].dropna().unique()):
+            sub = sub_st[sub_st[hour_col] == h]
+            if len(sub) < config.LOSO_MIN_POINTS_PER_HOUR:
+                print(f"   - {srow['station']} Hr={h:g}: 只有 {len(sub)} 筆（少於 {config.LOSO_MIN_POINTS_PER_HOUR}），略過")
+                continue
+            plot_obs_vs_model(sub['obs'], sub['pred'], out_dir,
+                              name=f"loso_{safe_name(srow['station'])}_{_hour_tag(h)}",
+                              title_suffix=f"LOSO, {srow['name']} ({srow['station']}), Hr = {h:g}", lim=lim)
+            with warnings.catch_warnings():
+                warnings.simplefilter('ignore', category=RuntimeWarning)
+                m = {k.split(' (')[0]: v for k, v in
+                     calculate_evaluation_metrics(sub['obs'].to_numpy(), sub['pred'].to_numpy()).items()}
+            rows.append({'station': srow['station'], 'name': srow['name'], 'Hr': h, 'N': len(sub), **m})
+            n_fig += 1
+    df = pd.DataFrame(rows)
+    if len(df):
+        path = os.path.join(output_dir, "loso_station_hour_metrics.csv")
+        df.to_csv(path, index=False, encoding='utf-8-sig')
+        print(f"✅ 已輸出 {n_fig} 張逐測站逐小時散布圖至 {os.path.join(output_dir, 'scatter_by_hour')}，指標表: {path}")
+    return df
+
+
+def plot_shap_heatmap(shap_df, output_dir):
+    """
+    各測站的 SHAP 特徵重要性彙整：列 = 測站、欄 = 特徵，數值為該測站平均 |SHAP| 佔該測站所有特徵總和的比例。
+    可看出模型在不同測站依賴的特徵是否一致。
+    """
+    feats = [c for c in shap_df.columns if c not in ('station', 'name')]
+    mat = shap_df[feats].to_numpy(dtype='float64')
+    share = mat / mat.sum(axis=1, keepdims=True)
+    order = np.argsort(-share.mean(axis=0))
+    share = share[:, order]
+    feats = [feats[i] for i in order]
+    fig, ax = plt.subplots(figsize=(max(8, 0.55 * len(feats) + 3), max(4, 0.35 * len(shap_df) + 2)), dpi=config.FIG_DPI)
+    im = ax.imshow(share, aspect='auto', cmap='YlOrRd')
+    ax.set_xticks(range(len(feats)))
+    ax.set_xticklabels(feats, rotation=60, ha='right', fontsize=8)
+    ax.set_yticks(range(len(shap_df)))
+    ax.set_yticklabels([f"{n} ({s})" for n, s in zip(shap_df['name'], shap_df['station'])], fontsize=8)
+    if share.size <= 600:
+        for i in range(share.shape[0]):
+            for j in range(share.shape[1]):
+                ax.text(j, i, f"{share[i, j] * 100:.0f}", ha='center', va='center', fontsize=6,
+                        color='white' if share[i, j] > 0.5 * share.max() else 'black')
+    fig.colorbar(im, ax=ax, label='Share of mean |SHAP| (%)', format=lambda v, _: f"{v * 100:.0f}")
+    ax.set_title('Leave-one-station-out: SHAP importance by station', fontsize=11)
+    path = os.path.join(output_dir, "loso_shap_importance_heatmap.png")
+    fig.savefig(path, bbox_inches='tight', dpi=config.FIG_DPI)
+    plt.close(fig)
+    print(f"✅ SHAP 彙整熱圖已儲存至: {path}")
     return path
