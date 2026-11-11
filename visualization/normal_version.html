@@ -96,10 +96,25 @@
         .site-header h2 {
             font-size: 1.5rem;
             color: #0f172a;
+            margin-bottom: 10px;
         }
-        .site-header p {
-            color: #64748b;
-            font-size: 0.95rem;
+        .metrics-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin-top: 10px;
+            padding-top: 10px;
+            border-top: 1px solid #e2e8f0;
+            font-size: 0.9rem;
+            color: #475569;
+        }
+        .metrics-grid span {
+            background: #f1f5f9;
+            padding: 4px 10px;
+            border-radius: 4px;
+        }
+        .metrics-grid strong {
+            color: #0f172a;
         }
         /* 圖表外框 */
         .chart-card {
@@ -144,24 +159,26 @@
     <div class="container">
         <!-- 狀態顯示列 -->
         <div class="status-card">
-            <span id="loadStatus" style="font-weight: 500; color: #059669;">正在從 GitHub 自動載入遠端資料...</span>
+            <span id="loadStatus" style="font-weight: 500; color: #059669;">正在從 GitHub 自動載入遠端資料與指標...</span>
             <input type="file" id="csvFileInput" accept=".csv" style="display:none;" />
-            <button onclick="document.getElementById('csvFileInput').click()" style="background:#f1f5f9; border:1px solid #cbd5e1; padding:6px 12px; border-radius:4px; cursor:pointer; font-size:0.85rem;">切換上傳其他 CSV</button>
+            <button onclick="document.getElementById('csvFileInput').click()" style="background:#f1f5f9; border:1px solid #cbd5e1; padding:6px 12px; border-radius:4px; cursor:pointer; font-size:0.85rem;">切換上傳預測 CSV</button>
         </div>
 
         <div id="contentArea">
-            <div class="loading">正在繪製圖表，請稍候...</div>
+            <div class="loading">正在繪製圖表與載入評估指標，請稍候...</div>
         </div>
     </div>
 
     <script>
         let globalData = [];
+        let metricsDataMap = new Map(); // 用來存放 station 指標的對照表
         let siteIds = [];
 
         // 硬coded 的 GitHub Raw CSV 網址
         const HARDCODED_CSV_URL = 'https://raw.githubusercontent.com/YouYueHuang/ghg-emission/main/results/runs/run_20261111_125508_loso_spring/loso_predictions.csv';
+        const HARDCODED_METRICS_URL = 'https://raw.githubusercontent.com/YouYueHuang/ghg-emission/main/results/runs/run_20261111_125508_loso_spring/loso_station_metrics.csv';
 
-        // 監聽手動上傳備用
+        // 監聽手動上傳預測資料備用
         document.getElementById('csvFileInput').addEventListener('change', function(e) {
             const file = e.target.files[0];
             if (file) {
@@ -171,37 +188,52 @@
                     skipEmptyLines: true,
                     complete: function(results) {
                         globalData = results.data;
-                        document.getElementById('loadStatus').innerText = `已載入自定義檔案：${file.name}`;
+                        document.getElementById('loadStatus').innerText = `已載入自定義預測檔案：${file.name}`;
                         processAndRenderData();
                     }
                 });
             }
         });
 
-        // 頁面一載入就自動抓取遠端硬coded的 CSV 檔案
+        // 頁面一載入就同時抓取遠端預測資料與 Metrics 指標資料
         window.addEventListener('DOMContentLoaded', () => {
-            fetch(HARDCODED_CSV_URL)
-                .then(response => {
-                    if (!response.ok) throw new Error('網路回應錯誤');
-                    return response.text();
-                })
-                .then(csvText => {
-                    document.getElementById('loadStatus').innerText = '成功從 GitHub 遠端載入資料！';
-                    Papa.parse(csvText, {
-                        header: true,
-                        dynamicTyping: true,
-                        skipEmptyLines: true,
-                        complete: function(results) {
-                            globalData = results.data;
-                            processAndRenderData();
-                        }
-                    });
-                })
-                .catch(err => {
-                    console.error(err);
-                    document.getElementById('loadStatus').innerText = '遠端載入失敗，請檢查網路或 CORS 設定';
-                    document.getElementById('contentArea').innerHTML = '<div class="loading" style="color:#dc2626;">無法自動載入遠端 CSV，請點擊上方按鈕手動選擇檔案。</div>';
+            Promise.all([
+                fetch(HARDCODED_CSV_URL).then(res => { if (!res.ok) throw new Error('預測資料載入錯誤'); return res.text(); }),
+                fetch(HARDCODED_METRICS_URL).then(res => { if (!res.ok) throw new Error('指標資料載入錯誤'); return res.text(); })
+            ])
+            .then(([csvText, metricsText]) => {
+                document.getElementById('loadStatus').innerText = '成功從 GitHub 遠端載入所有資料與指標！';
+                
+                // 解析 metrics CSV
+                Papa.parse(metricsText, {
+                    header: true,
+                    dynamicTyping: true,
+                    skipEmptyLines: true,
+                    complete: function(metricsResults) {
+                        metricsResults.data.forEach(row => {
+                            // 支援 siteid 或 station 欄位對應
+                            const key = row.siteid !== undefined ? String(row.siteid) : String(row.station);
+                            metricsDataMap.set(key, row);
+                        });
+
+                        // 解析 predictions CSV
+                        Papa.parse(csvText, {
+                            header: true,
+                            dynamicTyping: true,
+                            skipEmptyLines: true,
+                            complete: function(results) {
+                                globalData = results.data;
+                                processAndRenderData();
+                            }
+                        });
+                    }
                 });
+            })
+            .catch(err => {
+                console.error(err);
+                document.getElementById('loadStatus').innerText = '遠端載入失敗，請檢查網路或 CORS 設定';
+                document.getElementById('contentArea').innerHTML = '<div class="loading" style="color:#dc2626;">無法自動載入遠端檔案，請確認網路連線。</div>';
+            });
         });
 
         function processAndRenderData() {
@@ -249,10 +281,28 @@
                 sitePage.className = 'site-page';
                 sitePage.id = `site-page-${siteid}`;
 
+                // 從 metricsDataMap 取得該測站的指標（支援用 siteid 或 sitename 尋找）
+                let m = metricsDataMap.get(String(siteid)) || metricsDataMap.get(String(sitename)) || {};
+                
+                const rVal = m.r !== undefined ? m.r : 'N/A';
+                const r2Val = m.R2 !== undefined ? m.R2 : (m.r2 !== undefined ? m.r2 : 'N/A');
+                const rmseVal = m.RMSE !== undefined ? m.RMSE : (m.rmse !== undefined ? m.rmse : 'N/A');
+                const mdVal = m.MD !== undefined ? m.MD : (m.md !== undefined ? m.md : 'N/A');
+                const mapeVal = m.MAPE !== undefined ? m.MAPE : (m.mape !== undefined ? m.mape : 'N/A');
+                const nTestVal = m.n_test !== undefined ? m.n_test : (m.nTest !== undefined ? m.nTest : 'N/A');
+
                 sitePage.innerHTML = `
                     <div class="site-header">
                         <h2>${sitename} 測站 (Site ID: ${siteid})</h2>
                         <p>時間序列資料展示：每日小時 8:00 ~ 15:00</p>
+                        <div class="metrics-grid">
+                            <span><strong>r:</strong> ${rVal}</span>
+                            <span><strong>R²:</strong> ${r2Val}</span>
+                            <span><strong>RMSE:</strong> ${rmseVal}</span>
+                            <span><strong>MD:</strong> ${mdVal}</span>
+                            <span><strong>MAPE:</strong> ${mapeVal}%</span>
+                            <span><strong>n_test:</strong> ${nTestVal}</span>
+                        </div>
                     </div>
                     <div id="charts-container-${siteid}"></div>
                 `;
