@@ -3,10 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>測站觀測資料時間序列 (Time Series)</title>
-    <!-- 引入 Chart.js 圖表庫與 PapaParse CSV 解析庫 -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.min.js"></script>
+    <title>多頁面切換框架</title>
     <style>
         * {
             box-sizing: border-box;
@@ -15,26 +12,25 @@
         }
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-            background-color: #f4f6f9;
-            color: #333;
+            background-color: #f8fafc;
+            color: #334155;
             line-height: 1.6;
         }
-        /* 頂部導覽固定頁首 */
+
+        /* 頂部導覽列 (選單) */
         header {
             position: sticky;
             top: 0;
-            background: #1e293b;
-            color: #fff;
+            background: #0f172a;
+            color: #ffffff;
             padding: 15px 30px;
-            z-index: 1000;
-            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);
             display: flex;
             justify-content: space-between;
             align-items: center;
-            flex-wrap: wrap;
-            gap: 15px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            z-index: 1000;
         }
-        header h1 {
+        header .brand {
             font-size: 1.25rem;
             font-weight: 600;
         }
@@ -44,420 +40,143 @@
             flex-wrap: wrap;
         }
         .nav-btn {
-            background: #334155;
-            color: #f8fafc;
-            border: 1px solid #475569;
+            background: #1e293b;
+            color: #cbd5e1;
+            border: 1px solid #334155;
             padding: 8px 16px;
             border-radius: 6px;
             cursor: pointer;
-            text-decoration: none;
             font-size: 0.9rem;
+            text-decoration: none;
             transition: all 0.2s ease;
         }
-        .nav-btn:hover, .nav-btn.active {
+        .nav-btn:hover {
+            background: #334155;
+            color: #ffffff;
+        }
+        .nav-btn.active {
             background: #2563eb;
+            color: #ffffff;
             border-color: #2563eb;
-            color: #fff;
             font-weight: bold;
         }
-        /* 主體區塊 */
+
+        /* 主內容容器 */
         .container {
-            max-width: 1400px;
-            margin: 20px auto;
+            max-width: 1200px;
+            margin: 30px auto;
             padding: 0 20px;
         }
-        /* 狀態列 */
-        .status-card {
-            background: white;
-            border-radius: 8px;
-            padding: 15px 20px;
-            margin-bottom: 25px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 15px;
-        }
-        /* 測站區塊 */
-        .site-page {
+
+        /* 頁面切換控制 (預設隱藏，帶 .active 者顯示) */
+        .page-content {
             display: none;
+            background: #ffffff;
+            border-radius: 8px;
+            padding: 30px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            min-height: 500px;
         }
-        .site-page.active {
+        .page-content.active {
             display: block;
         }
-        .site-header {
-            background: #ffffff;
-            padding: 20px;
-            border-radius: 8px;
-            margin-bottom: 20px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-            border-left: 5px solid #2563eb;
-        }
-        .site-header h2 {
+
+        /* 內容樣式範例 */
+        .page-content h2 {
             font-size: 1.5rem;
             color: #0f172a;
-        }
-        .site-header p {
-            color: #64748b;
-            font-size: 0.95rem;
-        }
-        /* 圖表外框 */
-        .chart-card {
-            background: white;
-            border-radius: 8px;
-            padding: 20px;
-            margin-bottom: 25px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-        }
-        .chart-card h3 {
-            font-size: 1.1rem;
             margin-bottom: 15px;
-            color: #334155;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            flex-wrap: wrap;
-            gap: 10px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #e2e8f0;
         }
-        .chart-wrapper {
-            position: relative;
-            height: 380px;
-            width: 100%;
-        }
-        .loading {
+        .blank-placeholder {
+            padding: 40px;
             text-align: center;
-            padding: 50px;
-            font-size: 1.2rem;
-            color: #64748b;
+            color: #94a3b8;
+            border: 2px dashed #cbd5e1;
+            border-radius: 8px;
+            margin-top: 20px;
         }
-        .legend-note {
-            font-size: 0.85rem;
-            font-weight: normal;
-            color: #64748b;
-            display: flex;
-            gap: 12px;
-            align-items: center;
-        }
-        .dot-green { display: inline-block; width: 8px; height: 8px; background-color: #16a34a; border-radius: 50%; }
-        .dot-red { display: inline-block; width: 8px; height: 8px; background-color: #dc2626; border-radius: 50%; }
     </style>
 </head>
 <body>
 
+    <!-- 頂部導覽列：點擊可切換子頁面 -->
     <header>
-        <h1>空氣品質測站觀測時間序列圖</h1>
-        <nav id="siteNav">
-            <!-- 測站快速跳轉連結將動態生成於此 -->
+        <div class="brand">NO2 圖表</div>
+        <nav>
+            <button class="nav-btn active" onclick="showPage('home')">首頁 (空白)</button>
+            <!-- 將按鈕改為 a 標籤，並設定 href 指向 visualization/index.html -->
+            <a href="visualization/index.html" class="nav-btn">LOSO時間序列表</a>
+            <a href="visualization/normal_version.html" class="nav-btn">LOSO時間序列表</a>
+            <button class="nav-btn" onclick="showPage('page2')">子頁面 2</button>
         </nav>
     </header>
 
     <div class="container">
-        <!-- 狀態顯示列 -->
-        <div class="status-card">
-            <span id="loadStatus" style="font-weight: 500; color: #059669;">正在從 GitHub 自動載入遠端資料...</span>
-            <input type="file" id="csvFileInput" accept=".csv" style="display:none;" />
-            <button onclick="document.getElementById('csvFileInput').click()" style="background:#f1f5f9; border:1px solid #cbd5e1; padding:6px 12px; border-radius:4px; cursor:pointer; font-size:0.85rem;">切換上傳其他 CSV</button>
+        <!-- 首頁：空白頁面 -->
+        <div id="home" class="page-content active">
+            <h2>首頁</h2>
+            <div class="blank-placeholder">
+                <p>這是一張空白頁面，您可以在此處放置介紹文字、自訂連結。</p>
+            </div>
         </div>
 
-        <div id="contentArea">
-            <div class="loading">正在繪製圖表，請稍候...</div>
+        <!-- 子頁面 1 -->
+        <div id="page1" class="page-content">
+            <h2>子頁面 1</h2>
+            <div class="blank-placeholder">
+                <p>［子頁面 1 內容區塊］</p>
+                <!-- 您可以在此處放自訂連結、<canvas> 圖表或讀取 CSV 的程式碼 -->
+            </div>
+        </div>
+
+        <!-- 子頁面 2 -->
+        <div id="page2" class="page-content">
+            <h2>子頁面 2</h2>
+            <div class="blank-placeholder">
+                <p>［子頁面 2 內容區塊］</p>
+            </div>
+        </div>
+
+        <!-- 子頁面 3 -->
+        <div id="page3" class="page-content">
+            <h2>子頁面 3</h2>
+            <div class="blank-placeholder">
+                <p>［子頁面 3 內容區塊］</p>
+            </div>
+        </div>
+
+        <!-- 子頁面 4 -->
+        <div id="page4" class="page-content">
+            <h2>子頁面 4</h2>
+            <div class="blank-placeholder">
+                <p>［子頁面 4 內容區塊］</p>
+            </div>
         </div>
     </div>
 
     <script>
-        let globalData = [];
-        let siteIds = [];
+        // 切換頁面的 JavaScript 函數
+        function showPage(pageId) {
+            // 隱藏所有頁面內容
+            const pages = document.querySelectorAll('.page-content');
+            pages.forEach(page => page.classList.remove('active'));
 
-        // 硬coded 的 GitHub Raw CSV 網址
-        const HARDCODED_CSV_URL = 'https://raw.githubusercontent.com/YouYueHuang/ghg-emission/main/results/runs/run_20261111_125508_loso_spring/loso_predictions.csv';
+            // 取消所有導覽按鈕的高亮狀態
+            const buttons = document.querySelectorAll('.nav-btn');
+            buttons.forEach(btn => btn.classList.remove('active'));
 
-        // 監聽手動上傳備用
-        document.getElementById('csvFileInput').addEventListener('change', function(e) {
-            const file = e.target.files[0];
-            if (file) {
-                Papa.parse(file, {
-                    header: true,
-                    dynamicTyping: true,
-                    skipEmptyLines: true,
-                    complete: function(results) {
-                        globalData = results.data;
-                        document.getElementById('loadStatus').innerText = `已載入自定義檔案：${file.name}`;
-                        processAndRenderData();
-                    }
-                });
+            // 顯示目標頁面
+            const targetPage = document.getElementById(pageId);
+            if (targetPage) {
+                targetPage.classList.add('active');
             }
-        });
 
-        // 頁面一載入就自動抓取遠端硬coded的 CSV 檔案
-        window.addEventListener('DOMContentLoaded', () => {
-            fetch(HARDCODED_CSV_URL)
-                .then(response => {
-                    if (!response.ok) throw new Error('網路回應錯誤');
-                    return response.text();
-                })
-                .then(csvText => {
-                    document.getElementById('loadStatus').innerText = '成功從 GitHub 遠端載入資料！';
-                    Papa.parse(csvText, {
-                        header: true,
-                        dynamicTyping: true,
-                        skipEmptyLines: true,
-                        complete: function(results) {
-                            globalData = results.data;
-                            processAndRenderData();
-                        }
-                    });
-                })
-                .catch(err => {
-                    console.error(err);
-                    document.getElementById('loadStatus').innerText = '遠端載入失敗，請檢查網路或 CORS 設定';
-                    document.getElementById('contentArea').innerHTML = '<div class="loading" style="color:#dc2626;">無法自動載入遠端 CSV，請點擊上方按鈕手動選擇檔案。</div>';
-                });
-        });
+            // 將當前點擊的按鈕設為高亮
+            event.currentTarget.classList.add('active');
 
-        function processAndRenderData() {
-            if (!globalData || globalData.length === 0) return;
-
-            const siteMap = new Map();
-            globalData.forEach(row => {
-                if (row.siteid && !siteMap.has(row.siteid)) {
-                    siteMap.set(row.siteid, row.sitename || `測站 ${row.siteid}`);
-                }
-            });
-
-            siteIds = Array.from(siteMap.keys());
-            renderNavigation(siteMap);
-            renderSitePages(siteMap);
-
-            if (siteIds.length > 0) {
-                switchSite(siteIds[0]);
-            }
-        }
-
-        function renderNavigation(siteMap) {
-            const nav = document.getElementById('siteNav');
-            nav.innerHTML = '';
-            siteMap.forEach((name, id) => {
-                const btn = document.createElement('a');
-                btn.className = 'nav-btn';
-                btn.href = `#site-${id}`;
-                btn.innerText = `${name} (ID: ${id})`;
-                btn.onclick = (e) => {
-                    e.preventDefault();
-                    switchSite(id);
-                };
-                btn.id = `nav-link-${id}`;
-                nav.appendChild(btn);
-            });
-        }
-
-        function renderSitePages(siteMap) {
-            const contentArea = document.getElementById('contentArea');
-            contentArea.innerHTML = '';
-
-            siteMap.forEach((sitename, siteid) => {
-                const sitePage = document.createElement('div');
-                sitePage.className = 'site-page';
-                sitePage.id = `site-page-${siteid}`;
-
-                sitePage.innerHTML = `
-                    <div class="site-header">
-                        <h2>${sitename} 測站 (Site ID: ${siteid})</h2>
-                        <p>時間序列資料展示：每日小時 8:00 ~ 15:00</p>
-                    </div>
-                    <div id="charts-container-${siteid}"></div>
-                `;
-
-                contentArea.appendChild(sitePage);
-
-                const siteData = globalData.filter(d => String(d.siteid) === String(siteid));
-                renderSiteCharts(siteid, siteData);
-            });
-        }
-
-        function renderSiteCharts(siteid, siteData) {
-            const container = document.getElementById(`charts-container-${siteid}`);
-
-            const monthsSet = new Set();
-            siteData.forEach(d => {
-                if (d.monitordate) {
-                    const monthStr = String(d.monitordate).substring(0, 7);
-                    monthsSet.add(monthStr);
-                }
-            });
-
-            const sortedMonths = Array.from(monthsSet).sort().slice(0, 3);
-
-            sortedMonths.forEach((yearMonth) => {
-                const card = document.createElement('div');
-                card.className = 'chart-card';
-                const canvasId = `chart-${siteid}-${yearMonth}`;
-
-                card.innerHTML = `
-                    <h3>
-                        <span>${yearMonth} 月份時序圖</span> 
-                        <span class="legend-note">
-                            <span>pred 狀態：</span>
-                            <span><i class="dot-green"></i> 正常 (綠點)</span>
-                            <span><i class="dot-red"></i> 超標/異常 (紅點)</span>
-                        </span>
-                    </h3>
-                    <div class="chart-wrapper">
-                        <canvas id="${canvasId}"></canvas>
-                    </div>
-                `;
-                container.appendChild(card);
-
-                buildSingleMonthChart(canvasId, siteData, yearMonth);
-            });
-        }
-
-        function buildSingleMonthChart(canvasId, siteData, yearMonth) {
-            const monthDates = Array.from(new Set(
-                siteData
-                    .filter(d => String(d.monitordate).startsWith(yearMonth))
-                    .map(d => String(d.monitordate))
-            )).sort();
-
-            const targetHours = [8, 9, 10, 11, 12, 13, 14, 15];
-            const labels = [];
-            const tooltipFullTimes = []; 
-            const obsValues = [];
-            const predValues = [];
-            const predPointColors = [];
-
-            const dataMap = new Map();
-            siteData.forEach(d => {
-                const hr = d.Hr !== undefined ? d.Hr : d.hr;
-                const key = `${d.monitordate}_${hr}`;
-                dataMap.set(key, d);
-            });
-
-            monthDates.forEach(dateStr => {
-                const dayLabel = dateStr.substring(8, 10);
-
-                targetHours.forEach(hr => {
-                    labels.push(dayLabel);
-                    tooltipFullTimes.push(`${dateStr} ${hr}:00`);
-
-                    const key = `${dateStr}_${hr}`;
-                    if (dataMap.has(key)) {
-                        const row = dataMap.get(key);
-                        obsValues.push(row.obs !== undefined && row.obs !== null ? row.obs : null);
-                        
-                        const predVal = row.pred !== undefined && row.pred !== null ? row.pred : null;
-                        predValues.push(predVal);
-
-                        if (predVal !== null) {
-                            const exceed = row.exceed_mape;
-                            if (exceed === 1) {
-                                predPointColors.push('#dc2626'); 
-                            } else {
-                                predPointColors.push('#16a34a'); 
-                            }
-                        } else {
-                            predPointColors.push('transparent');
-                        }
-                    } else {
-                        obsValues.push(null);
-                        predValues.push(null);
-                        predPointColors.push('transparent');
-                    }
-                });
-            });
-
-            const ctx = document.getElementById(canvasId).getContext('2d');
-            new Chart(ctx, {
-                type: 'line',
-                data: {
-                    labels: labels,
-                    datasets: [
-                        {
-                            label: 'obs (實際觀測值)',
-                            data: obsValues,
-                            borderColor: '#000000',
-                            backgroundColor: '#000000',
-                            borderWidth: 2,
-                            pointRadius: 2,
-                            pointHoverRadius: 5,
-                            spanGaps: false
-                        },
-                        {
-                            label: 'pred (預測值)',
-                            data: predValues,
-                            borderColor: '#2563eb',
-                            backgroundColor: '#2563eb',
-                            borderWidth: 1.5,
-                            borderDash: [4, 4],
-                            pointRadius: 2,         
-                            pointBackgroundColor: predPointColors, 
-                            pointBorderColor: predPointColors,
-                            pointHoverRadius: 5,
-                            spanGaps: false
-                        }
-                    ]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    animation: false, 
-                    interaction: {
-                        mode: 'index',
-                        intersect: false,
-                    },
-                    scales: {
-                        x: {
-                            display: true,
-                            title: {
-                                display: true,
-                                text: '日期 (8:00 - 15:00)'
-                            },
-                            ticks: {
-                                maxRotation: 0,
-                                minRotation: 0,
-                                autoSkip: true,
-                                maxTicksLimit: 31 
-                            },
-                            grid: {
-                                color: '#e2e8f0'
-                            }
-                        },
-                        y: {
-                            display: true,
-                            title: {
-                                display: true,
-                                text: 'NO2 (ppb)'
-                            },
-                            grid: {
-                                color: '#e2e8f0'
-                            }
-                        }
-                    },
-                    plugins: {
-                        legend: {
-                            position: 'top',
-                        },
-                        tooltip: {
-                            callbacks: {
-                                title: (items) => `時間: ${tooltipFullTimes[items[0].dataIndex]}`
-                            }
-                        }
-                    }
-                }
-            });
-        }
-
-        function switchSite(siteid) {
-            document.querySelectorAll('.site-page').forEach(page => page.classList.remove('active'));
-            document.querySelectorAll('.nav-btn').forEach(btn => btn.classList.remove('active'));
-
-            const targetPage = document.getElementById(`site-page-${siteid}`);
-            const targetNav = document.getElementById(`nav-link-${siteid}`);
-
-            if (targetPage) targetPage.classList.add('active');
-            if (targetNav) targetNav.classList.add('active');
-
+            // 切換時無滾動動畫，即時頂格
             window.scrollTo({ top: 0, behavior: 'instant' });
         }
-    </script>
-</body>
-</html>
+    </script
