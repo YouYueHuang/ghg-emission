@@ -125,8 +125,7 @@ LOSO_NAME_COL = 'sitename'         # 圖表與表格顯示用的測站名稱（�
 LOSO_DATE_COL = 'monitordate'      # 時間序列圖的日期欄位（會再加上 Hr 組成完整時間）
 LOSO_MIN_STATION_ROWS = 50         # 清理後資料列少於此數的測站不做（預測點太少，指標沒有意義）
 LOSO_VAL_STATION_FRAC = 0.15       # 設定了 early stopping 時，從「其餘測站」中抽這個比例的測站當驗證集（被移除的測站完全不參與）
-LOSO_GAP_HOURS = 1.5               # 時間序列圖中，相鄰兩點超過此小時數就斷線（夜間、衛星缺值）
-LOSO_ZOOM_DAYS = 14                # 逐小時圖只畫資料最多的連續 N 天（整段期間太密看不清楚）；0 = 畫全部
+LOSO_TS_AXIS = 'time'             # 時間序列圖橫軸：'time' = 真實時間（折線連續連接）；'index' = 觀測序號（夜間與缺漏的小時不佔寬度）
 LOSO_SEED = 42
 LOSO_MIN_POINTS_PER_HOUR = 10       # 逐測站、逐小時散布圖：該測站該小時的資料點少於此數就不畫
 LOSO_MAP_LABELS = 'value'           # 測站分佈圖上的標註：'value'（只標數值）、'name_value'（測站名稱 + 數值）、'none'（不標）

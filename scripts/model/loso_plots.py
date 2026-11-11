@@ -25,52 +25,52 @@ def _timestamps(sub):
         return None
 
 
-def _best_window(hourly, days):
-    """資料最多的連續 days 天（以有實測且有預測的小時數計）。回傳 (起, 迄)。"""
-    valid = hourly.dropna().groupby(hourly.dropna().index.normalize()).size()
-    full = valid.reindex(pd.date_range(hourly.index.min().normalize(), hourly.index.max().normalize(), freq='D'),
-                         fill_value=0)
-    if len(full) <= days:
-        return full.index[0], full.index[-1] + pd.Timedelta(days=1)
-    start = full.rolling(days).sum().shift(-(days - 1)).idxmax()
-    return start, start + pd.Timedelta(days=days)
-
-
-def plot_station_timeseries(sub, row, out_path):
-    """上圖：每日平均（整段期間）；下圖：逐小時（資料最多的 LOSO_ZOOM_DAYS 天，缺資料處斷線）。"""
+def plot_station_timeseries(sub, row, out_path, xlim=None):
+    """
+    逐小時時間序列：整段期間（資料集第一個小時到最後一個小時）的實測與預測，折線連續、不因夜間或缺資料而斷開。
+    config.LOSO_TS_AXIS：'time' = 橫軸為真實時間（沒資料的時段以直線連接）；
+                         'index' = 橫軸為依時間排序的觀測序號（夜間與缺漏的時段不佔寬度，刻度標示日期）。
+    """
     ts = _timestamps(sub)
     obs, pred = sub['obs'].to_numpy(), sub['pred'].to_numpy()
-    zoom_note = ''
-    if ts is None:
-        s = pd.DataFrame({'obs': obs, 'pred': pred}, index=pd.RangeIndex(len(sub)))
-        hourly = daily = s
-        xlabel = 'sample order'
-    else:
-        s = pd.DataFrame({'obs': obs, 'pred': pred}, index=pd.DatetimeIndex(ts.to_numpy()).floor('h'))
-        s = s.groupby(level=0).mean().sort_index()
-        daily = s.resample('D').mean()                                              # 沒資料的日子是 NaN，折線自動斷開
-        hourly = s.reindex(pd.date_range(s.index.min(), s.index.max(), freq='h'))    # 缺的小時補 NaN
-        if config.LOSO_ZOOM_DAYS and config.LOSO_ZOOM_DAYS > 0:
-            t0, t1 = _best_window(hourly, int(config.LOSO_ZOOM_DAYS))
-            hourly = hourly[(hourly.index >= t0) & (hourly.index < t1)]
-            zoom_note = f" (zoom: {t0.date()} ~ {(t1 - pd.Timedelta(days=1)).date()})"
-        xlabel = 'time'
+    t = None
+    if ts is not None:
+        t = pd.DatetimeIndex(ts.to_numpy())
+        order = np.argsort(t.values, kind='stable')
+        t, obs, pred = t[order], obs[order], pred[order]
 
-    fig, axes = plt.subplots(2, 1, figsize=(14, 8), dpi=config.FIG_DPI)
-    for ax, data, title, ms in ((axes[0], daily, 'Daily mean', 5), (axes[1], hourly, 'Hourly' + zoom_note, 4)):
-        ax.plot(data.index, data['obs'], color='black', marker='o', markersize=ms, linewidth=0.9, label='Observed')
-        ax.plot(data.index, data['pred'], color='tab:red', marker='o', markersize=ms, linewidth=0.9,
-                label='Predicted (station left out)')
-        ax.set_ylabel(f'NO2 ({config.SCATTER_UNIT})')
-        ax.set_title(title, fontsize=11, loc='left')
-        ax.grid(alpha=0.3)
-    axes[0].legend(loc='upper right')
-    axes[1].set_xlabel(xlabel)
+    mode = config.LOSO_TS_AXIS
+    fig, ax = plt.subplots(figsize=(18, 5.5), dpi=config.FIG_DPI)
+    if t is None:
+        x, xlabel = np.arange(len(obs)), 'sample order'
+    elif mode == 'index':
+        x, xlabel = np.arange(len(obs)), 'observation order (hours without data are skipped)'
+    else:
+        x, xlabel = t, 'time'
+    ax.plot(x, obs, color='black', marker='o', markersize=2.5, linewidth=0.8, label='Observed')
+    ax.plot(x, pred, color='tab:red', marker='o', markersize=2.5, linewidth=0.8, label='Predicted (station left out)')
+
+    if t is not None and mode == 'index':        # 每週第一筆觀測處標示日期
+        wk = pd.Series(t.to_period('W').astype(str))
+        first = wk.drop_duplicates().index.to_numpy()
+        ax.set_xticks(first)
+        ax.set_xticklabels([f"{t[i]:%m-%d}" for i in first], rotation=0)
+        ax.set_xlim(-1, len(obs))
+    elif t is not None and xlim is not None:
+        pad = pd.Timedelta(hours=6)
+        ax.set_xlim(xlim[0] - pad, xlim[1] + pad)
+    ax.set_xlabel(xlabel)
+    ax.set_ylabel(f'NO2 ({config.SCATTER_UNIT})')
+    if t is not None:
+        lo, hi = xlim if xlim is not None else (t.min(), t.max())
+        ax.set_title(f"Hourly, {lo:%Y-%m-%d %H:%M} ~ {hi:%Y-%m-%d %H:%M}", fontsize=11, loc='left')
+    ax.grid(alpha=0.3)
+    ax.legend(loc='upper right')
 
     txt = (f"r = {row['r']:.3f}\nR² = {row['R2']:.3f}\nRMSE = {row['RMSE']:.3f}\n"
            f"MD = {row['MD']:.3f}\nMAPE = {row['MAPE']:.1f}%\nN = {int(row['n_test'])}\n(hourly, whole period)")
-    axes[0].text(0.01, 0.97, txt, transform=axes[0].transAxes, va='top', ha='left', fontsize=9,
-                 bbox=dict(boxstyle='round,pad=0.4', facecolor='white', edgecolor='gray', alpha=0.9), zorder=10)
+    ax.text(0.01, 0.97, txt, transform=ax.transAxes, va='top', ha='left', fontsize=9,
+            bbox=dict(boxstyle='round,pad=0.4', facecolor='white', edgecolor='gray', alpha=0.9), zorder=10)
     fig.suptitle(f"Leave-one-station-out: {row['name']} ({row['station']})", fontsize=13)
     fig.tight_layout()
     os.makedirs(os.path.dirname(out_path), exist_ok=True)
@@ -82,10 +82,12 @@ def plot_all_timeseries(preds, metrics_df, output_dir, station_col):
     from loso import safe_name
     out_dir = os.path.join(output_dir, "timeseries")
     ids = preds[station_col].astype(str)
+    ts_all = _timestamps(preds)                      # 所有測站共用同一段時間範圍：資料集的第一個小時到最後一個小時
+    xlim = (ts_all.min(), ts_all.max()) if ts_all is not None else None
     n = 0
     for _, row in metrics_df.iterrows():
         sub = preds[ids == row['station']]
-        plot_station_timeseries(sub, row, os.path.join(out_dir, f"loso_{safe_name(row['station'])}.png"))
+        plot_station_timeseries(sub, row, os.path.join(out_dir, f"loso_{safe_name(row['station'])}.png"), xlim=xlim)
         n += 1
     print(f"✅ 已輸出 {n} 張測站時間序列圖至: {out_dir}")
 
