@@ -175,5 +175,12 @@ MAP_CMAP = 'Spectral_r'
 MAP_VMIN = 0
 MAP_VMAX = None                   # None = 取預測值的 99 百分位；也可固定，例如 40
 
+# ===== 訓練後輸出全台平均濃度分佈圖 (period_map.py) =====
+# 訓練完成後，用模型預測全台網格在「訓練第一天第一小時到最後一天最後一小時」每個小時的 NO2，平均後畫一張分佈圖
+PERIOD_MAP_ENABLED = True
+GRID_NC_PATH = "../../data/raw/nc_datas/data_2023/Merged/model"   # 含全台網格特徵的 .nc（資料夾 / 檔案 / 萬用字元）；欄位需與模型特徵一致、檔名含 YYYYMM
+PERIOD_MAP_PERIOD = 'train'        # 'train' = 訓練資料的第一個小時到最後一個小時；'all' = 訓練 + 測試資料
+PERIOD_MAP_MODEL = 'final'         # 用哪個模型預測：'final'（全部資料重訓；TRAIN_FINAL_MODEL=False 時自動改用 validated）或 'validated'
+
 # ===== 輸出 =====
 RUN_OUTPUT_ROOT = "../../results/runs"

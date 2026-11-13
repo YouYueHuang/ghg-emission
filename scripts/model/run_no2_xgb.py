@@ -21,6 +21,7 @@ XGBoost NO2 Concentration Prediction & SHAP Explanation Model (主程式)
     model_io.py        模型權重 / 超參數 / 中繼資料的儲存與載入
     metrics.py         評估指標 (r, R2, RMSE, MD, MAPE)
     plotting.py        XGBoost 原生特徵重要性圖
+    period_map.py      訓練後預測全台網格期間內每個小時的 NO2，平均後輸出一張分佈圖
     scatter_plot.py    Ground truth vs Model 散布圖（訓練集、測試集、測試集逐小時；密度上色 + 指標）
     training_curves.py 每一輪訓練後各指標的趨勢圖
     shap_analysis.py   SHAP 圖表
@@ -50,6 +51,7 @@ from data_loader import load_data
 from features import first_existing
 from data_split import prepare_train_test, save_test_set_ids, MODES
 from model import train_model, train_final_model, get_best_round
+from period_map import training_period, make_period_mean_map
 from tuning import run_optuna, load_tuned_params, evaluate_baseline_on_test, group_values_for
 from tuning_report import write_report
 from model_io import save_model_bundle
@@ -92,6 +94,13 @@ def train_no2_xgboost(data_input_path, target_col=config.TARGET_COL, mode=config
     X_train, X_test, y_train, y_test, feature_cols, df_clean, split_info = prepare_train_test(
         df, target_col, mode, output_dir)
     save_test_set_ids(df_clean, X_test.index, target_col, output_dir)
+    try:
+        p0, p1 = training_period(df_clean, X_train.index, X_test.index)
+        split_info = {**split_info, 'train_period_start': str(p0), 'train_period_end': str(p1)}
+        print(f"🕒 訓練資料的時間範圍: {p0:%Y-%m-%d %H:%M} ~ {p1:%Y-%m-%d %H:%M}")
+    except Exception as e:
+        p0 = p1 = None
+        print(f"[警告] 無法計算訓練期間（{e}），將略過全台平均濃度分佈圖")
 
     # 3. 超參數：預設用 config.MODEL_PARAMS；--tune 先用 Optuna 搜尋（只用訓練資料）；--params 沿用先前的搜尋結果
     model_params, tuning_result = config.MODEL_PARAMS, None
@@ -145,6 +154,7 @@ def train_no2_xgboost(data_input_path, target_col=config.TARGET_COL, mode=config
     save_model_bundle(model, feature_cols, os.path.join(output_dir, "model_validated"), validated_meta)
     save_model_bundle(model, feature_cols, os.path.join(config.MODEL_EXPORT_DIR, mode, "latest_validated"),
                       validated_meta)
+    map_model = model
     if config.TRAIN_FINAL_MODEL:
         final_model = train_final_model(pd.concat([X_train, X_test]), pd.concat([y_train, y_test]), best_round,
                                         model_params=model_params)
@@ -153,12 +163,21 @@ def train_no2_xgboost(data_input_path, target_col=config.TARGET_COL, mode=config
         save_model_bundle(final_model, feature_cols, os.path.join(output_dir, "model_final"), final_meta)
         save_model_bundle(final_model, feature_cols, os.path.join(config.MODEL_EXPORT_DIR, mode, "latest_final"),
                           final_meta)
+        if config.PERIOD_MAP_MODEL == 'final':
+            map_model = final_model
 
     # 8. 圖表（特徵重要性、逐輪指標趨勢、SHAP）
     plot_xgb_importance(model, output_dir)
     round_df = compute_round_metrics(model, X_train, y_train, X_test, y_test)
     plot_round_metrics(round_df, model, output_dir)
     generate_shap_plots(model, X_test, output_dir)
+    # 9. 全台平均濃度分佈圖：訓練期間每個小時的預測平均（失敗只提示，不影響前面已完成的結果）
+    if config.PERIOD_MAP_ENABLED and p0 is not None:
+        try:
+            make_period_mean_map(map_model, feature_cols, config.GRID_NC_PATH, p0, p1, output_dir,
+                                 label=f"({mode}, {'final' if map_model is not model else 'validated'} model)")
+        except Exception as e:
+            print(f"[警告] 全台平均濃度分佈圖失敗（{type(e).__name__}: {e}）。可修正 config.GRID_NC_PATH 後，用 predict_period_map.py 重畫")
     print(f"🎉 本次執行所有結果與圖表已完整存入: {output_dir}")
 
     return model

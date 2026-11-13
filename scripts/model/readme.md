@@ -56,6 +56,7 @@ project/
 | `shap_analysis.py` | SHAP 圖表 |
 | `output_utils.py` | 輸出資料夾、設定與指標 CSV |
 | `predict_map.py` | 指定 nc 檔、day、hour，預測並畫出全台 NO2 濃度圖 |
+| `period_map.py`、`predict_period_map.py` | 訓練後預測全台網格在訓練期間每個小時的 NO2，平均後輸出一張濃度分佈圖（訓練完自動執行；也可事後用已儲存的模型重畫） |
 | `inference.py`、`map_plot.py` | `predict_map.py` 使用的推論與繪圖模組 |
 
 ---
@@ -170,11 +171,15 @@ python run_loso.py --mode full_year         # 用全年資料（預設 spring �
 python run_loso.py --station-col sitename   # 以 sitename 區分測站（預設 siteid）
 python run_loso.py --stations 1,5,12        # 只做指定測站，建議先小規模試跑
 python run_loso.py --params latest          # 使用 Optuna 搜尋的最佳參數（固定樹數）
+python run_loso.py --no-shap                # 不做每個測站的 SHAP 分析（較快）
+python run_loso.py --no-hour-scatter        # 不輸出逐測站逐小時散布圖
 ```
 
 - **測站欄位**：`--station-col` 或 `LOSO_STATION_COL` 指定用 `siteid` 或 `sitename` 區分；圖表顯示用的名稱取自 `LOSO_NAME_COL`（預設 `sitename`）。
 - **資料與特徵**：沿用第 4 節的特徵、排序與缺值過濾（過濾報告也會輸出）。訓練與被預測的測站使用同一段期間（`spring` 為春季月份，`full_year` 為全部月份），沒有依時間再切一次。
 - **early stopping**：`MODEL_PARAMS` 設有 `early_stopping_rounds` 時，每一摺從「其餘測站」隨機抽 `LOSO_VAL_STATION_FRAC`（預設 15%）的測站當驗證集；**被移除的測站完全不參與訓練或停止判斷**。使用 `--params` 的最佳參數（固定樹數）時不需要驗證測站。
+  - 抽樣的亂數種子由「測站編號」與 `LOSO_SEED` 決定，所以**同一個測站的結果與 `--stations` 的內容、順序無關**（一次跑多個測站與各自單獨跑結果相同）。每一摺實際抽到的驗證測站記錄在 `loso_station_metrics.csv` 的 `val_stations` 欄位。
+  - 驗證測站的選擇會明顯影響結果（見下方「判讀」）。要完全排除這個隨機性，可用 `--params`（固定樹數）或把 `MODEL_PARAMS` 的 `early_stopping_rounds` 設為 `None`，這時每一摺都用全部其餘測站訓練。
 - **只預測特徵齊全的列**：與其他流程一致，任一特徵缺值（例如衛星 `no2` 被雲遮住）的列已在缺值過濾時移除，所以測站的時間序列會有缺口，缺口處折線斷開。
 - 資料列少於 `LOSO_MIN_STATION_ROWS`（預設 50）的測站會略過。
 
@@ -184,17 +189,34 @@ python run_loso.py --params latest          # 使用 Optuna 搜尋的最佳參�
 
 | 檔案 | 內容 |
 |---|---|
-| `timeseries/loso_<測站>.png` | **每個測站一張時間序列圖**：上圖為整段期間的每日平均、下圖為逐小時（資料最多的連續 `LOSO_ZOOM_DAYS` 天，預設 14 天；缺資料處斷線），黑線為實測、紅線為移除該測站後的預測，並標示 r、R²、RMSE、MD、MAPE、N |
+| `timeseries/loso_<測站>.png` | **每個測站一張逐小時時間序列圖**：從資料集的第一個小時（例如 3/1 08:00）畫到最後一個小時（例如 5/31 15:00），所有測站共用同一段範圍；黑線為實測、紅線為移除該測站後的預測，折線**連續**，不因夜間或缺資料而斷開；並標示 r、R²、RMSE、MD、MAPE、N（整段期間逐小時資料）。`LOSO_TS_AXIS` 可改橫軸：`'time'`（預設，真實時間，沒資料的時段以直線連接）或 `'index'`（觀測序號，夜間與缺漏的小時不佔寬度，刻度標示日期） |
 | `loso_station_metrics.csv`、`loso_station_metrics.png` | 各測站的指標（依 R² 排序）與長條圖 |
-| `loso_station_map_R2.png`、`loso_station_map_RMSE.png` | 測站位置，顏色表示 R² 或 RMSE（找得到縣市界檔時疊上邊界） |
+| `scatter/ground_truth_vs_model_loso_<測站>.png` | **每個測站一張散布圖**（格式同 `ground_truth_vs_model_*.png`）：橫軸實測、縱軸移除該測站後的預測，使用整段期間**所有逐小時**的點，r、R²、RMSE、MD、MAPE、N 都由這些逐小時資料計算（不使用每日平均）；所有測站共用同一組座標範圍 |
+| `scatter_by_hour/<測站>/ground_truth_vs_model_loso_<測站>_hr08.png` 等 | **每個測站、每個小時（`Hr`）各一張散布圖**，例如 4 個測站、8 個小時 = 32 張。每張圖的點是「該測站該小時」整個期間的逐日資料，r、R²、RMSE、MD、MAPE、N 都由這些點計算；所有圖共用同一組座標範圍；點數少於 `LOSO_MIN_POINTS_PER_HOUR` 的小時略過 |
+| `loso_station_hour_metrics.csv` | 上述每張圖的指標（測站、`Hr`、N、r、R²、RMSE、MD、MAPE） |
+| `shap/<測站>/` | **每個測站的 SHAP 分析**（`shap_summary_beeswarm.png`、`shap_feature_importance_bar.png`、`shap_dependence_<特徵>.png`），圖標題附上測站名稱 |
+| `loso_shap_importance.csv`、`loso_shap_importance_heatmap.png` | 各測站的平均 \|SHAP\|（每個特徵）與跨測站彙整熱圖（每格為該特徵佔該測站所有特徵總和的比例），可看出模型在不同測站依賴的特徵是否一致 |
+| `loso_station_map_R2.png`、`loso_station_map_RMSE.png` | 測站位置，顏色表示 R² 或 RMSE（由逐小時預測算出；找得到縣市界檔時疊上邊界） |
+| `loso_station_map_obs_mean.png`、`loso_station_map_pred_mean.png`、`loso_station_map_MD.png` | **季節平均**的測站分佈圖：整段期間的實測平均、預測平均（兩張共用色階，方便直接比較），以及偏差（預測 − 實測） |
 | `ground_truth_vs_model_loso.png` | 全部留一預測合併的散布圖 |
 | `loso_predictions.csv` | 每一筆被移除測站的預測（測站、日期、`Hr`、經緯度、實測、預測） |
 | `loso_summary.csv` | 合併指標、各測站指標的平均與中位數、R² > 0 的測站數 |
 | `loso_config.json`、`data_filtering/` | 本次設定、特徵、參數，以及缺值過濾報告 |
 
+測站分佈圖（R²、RMSE、季節平均、偏差）都會在每個測站旁**標註數值**；`LOSO_MAP_LABELS` 可改成 `'name_value'`（連同測站名稱）或 `'none'`（不標），`LOSO_MAP_LABEL_FONTSIZE` 調整字體大小。測站密集的地區標籤可能互相靠近。
+
+### SHAP 分析的說明
+
+- 每個測站解釋的是「**移除該測站後訓練的模型**，在**該測站的資料**上如何做預測」，所以每個測站的 SHAP 來自不同的模型。
+- 每摺結束就計算 SHAP，不保留模型，所以不會占用大量記憶體；但每個測站多花一次 SHAP 計算的時間，測站很多時可用 `--no-shap` 跳過，或用 `--stations` 只做幾個。
+- 使用 early stopping 時，SHAP 只取 early stopping 選出的前幾棵樹，與預測所用的模型一致。
+- 單一測站的資料列有限（約數百列），SHAP 的蜂群圖與 dependence plot 點數不多，請以趨勢為主，不要過度解讀個別點。
+
 ### 判讀
 
+- **所有指標都由整段期間的逐小時預測計算**（每個測站的 R²、RMSE 等，以及合併指標），不是由每日平均計算。時間序列圖也是逐小時、整段期間。
 - 看各測站的**中位數**與分佈，不要只看合併指標：少數特別難預測的測站（例如偏遠、山區、特殊排放源）會被合併指標掩蓋。
+- **單一測站的指標變異很大**：留一測站每個測站只有一組預測，而 early stopping 用哪些測站當驗證集、訓練資料少了哪些測站，都會讓同一個測站的 R² 明顯不同（例如同一測站可能在 0.01 到 0.37 之間）。請不要只依單次結果下結論；可用不同的 `LOSO_SEED` 重跑看範圍，或用固定樹數排除驗證測站的影響。
 - 與依時間切分的結果比較，差距就是「測站被移除後」損失的表現。
 - `Industry`、`Road total length`、`Business`、`Residential`、`NDVI` 等靜態特徵每個測站各有固定值，等於測站的「指紋」，在一般切分中模型可以靠它記住測站；留一測站時模型沒看過這個指紋，更能檢驗這些特徵是否真的有泛化能力。
 
@@ -217,7 +239,9 @@ python run_loso.py --params latest          # 使用 Optuna 搜尋的最佳參�
 | `USE_NO2_LAGS`、`NO2_LAG_HOURS`、`ALLOW_MISSING_LAGS` | 落後特徵：是否使用、落後幾小時、落後值缺失時是否保留樣本 |
 | `MODEL_PARAMS` | XGBoost 超參數（未搜尋時使用，也是 Optuna 的基準） |
 | `LOSO_STATION_COL`、`LOSO_NAME_COL`、`LOSO_MIN_STATION_ROWS`、`LOSO_VAL_STATION_FRAC`、`LOSO_SEED` | 留一測站：區分測站的欄位、顯示名稱欄位、測站最少資料列數、early stopping 的驗證測站比例、隨機種子 |
-| `LOSO_DATE_COL`、`LOSO_ZOOM_DAYS`、`LOSO_GAP_HOURS`、`PLOT_CJK_FONTS` | 時間序列圖：日期欄位、逐小時圖顯示的天數、斷線的間隔小時數，以及顯示中文測站名稱的字型 |
+| `LOSO_MIN_POINTS_PER_HOUR` | 逐測站逐小時散布圖要求的最少資料點數（預設 10） |
+| `LOSO_MAP_LABELS`、`LOSO_MAP_LABEL_FONTSIZE` | 測站分佈圖上的數值標註方式與字體大小 |
+| `LOSO_DATE_COL`、`LOSO_TS_AXIS`、`PLOT_CJK_FONTS` | 時間序列圖：日期欄位、橫軸模式（`'time'` 或 `'index'`），以及顯示中文測站名稱的字型 |
 | `OPTUNA_N_TRIALS`、`OPTUNA_TIMEOUT` | 搜尋的試驗次數與總時間上限（秒） |
 | `OPTUNA_METRIC`、`OPTUNA_CV_FOLDS`、`OPTUNA_DATE_COL` | 優化目標、交叉驗證摺數、切摺用的日期欄位 |
 | `OPTUNA_MAX_ROUNDS`、`OPTUNA_EARLY_STOPPING`、`OPTUNA_FINAL_ROUNDS_SCALE` | 每摺樹數上限、early stopping 輪數、最終樹數的放大倍率 |
@@ -230,6 +254,7 @@ python run_loso.py --params latest          # 使用 Optuna 搜尋的最佳參�
 | `SCATTER_MIN_POINTS_PER_HOUR` | 逐小時散布圖要求的最少樣本數（預設 20） |
 | `SCATTER_DENSITY_BINS`、`SCATTER_DENSITY_SMOOTH`、`SCATTER_MAX_PLOT_POINTS` | 局部點密度的格數、平滑強度，以及超過此點數時只抽樣繪圖（指標仍用全部樣本） |
 | `SHAP_SAMPLE_SIZE`、`SHAP_DEPENDENCE_FEATURE` | SHAP 抽樣筆數與 dependence plot 的特徵 |
+| `PERIOD_MAP_ENABLED`、`GRID_NC_PATH`、`PERIOD_MAP_PERIOD`、`PERIOD_MAP_MODEL` | 訓練後的全台平均濃度分佈圖：是否輸出、網格特徵 nc 的路徑、期間（`'train'` 或 `'all'`）、使用的模型（`'final'` 或 `'validated'`） |
 | `PREDICT_*`、`MAP_*`、`SHP_PATH` | 預測全台濃度圖的預設輸入、色階、輸出位置與縣市邊界路徑 |
 | `RUN_OUTPUT_ROOT` | 輸出根目錄（預設 `../../results/runs`） |
 
@@ -251,6 +276,7 @@ python run_loso.py --params latest          # 使用 Optuna 搜尋的最佳參�
 - `run_config_and_params.csv`：輸入路徑、訓練組別、訓練與測試的月份與筆數、測試集指紋與模型參數
 - `test_set_ids.csv`：測試集每一列的識別欄位與目標值（用來核對兩種組別的測試集相同）
 - `data_filtering/`：切分前的資料過濾報告（見第 4 節）
+- `period_map/`：訓練完成後的全台平均濃度分佈圖 `NO2_period_mean_map.png`，以及每個像素的平均與使用小時數 `period_mean_grid.csv`（見第 8b 節）
 - `optuna/`：使用 `--tune` 時的搜尋報告、圖表、試驗記錄與最佳參數（見第 4b 節）
 - `evaluation_metrics.csv`：測試集的 r、R²、RMSE、MD、MAPE
 - `ground_truth_vs_model_train.png`：訓練集散布圖（橫軸實測、縱軸預測，點依局部密度上色，左上角標示 r、R²、RMSE、MD、MAPE、N）
@@ -293,6 +319,26 @@ python predict_map.py --nc <含特徵的 nc 檔> --day 15 --hour 6
 
 ---
 
+## 8b. 訓練後的全台平均濃度分佈圖
+
+模型訓練完成後，程式會自動用模型預測**全台灣網格**在「**訓練資料第一天第一小時到最後一天最後一小時**」每個小時的 NO2，平均後輸出**一張**濃度分佈圖（疊縣市邊界）。
+
+- **期間**：取訓練資料的第一個小時到最後一個小時（例如 `2023-03-01 08:00 ~ 2023-05-1x 15:00`），終端機會印出。`PERIOD_MAP_PERIOD = 'all'` 則納入測試資料（整個春季）。依時間切分時，訓練期間是春季前約 80%；`full_year` 組別則可能涵蓋整年。
+- **網格資料**：來自 `GRID_NC_PATH` 的 `.nc`（資料夾、檔案或萬用字元），欄位需與模型特徵一致（`MM`、`day`、`Hr` 若沒有，會分別由檔名的月份、day、小時欄位補上），檔名需含 `YYYYMM`。缺少特徵欄位時，程式會列出缺了哪些與 nc 的實際欄位。
+- **預測與平均**：nc 依「天」逐段讀取，只預測特徵齊全的像素與小時，累加每個像素的總和與筆數，最後相除，所以不會占用大量記憶體。**每個像素平均的是它自己有資料的小時**；衛星 `no2` 被雲遮住的小時不納入，`period_mean_grid.csv` 的 `n_hours` 記錄每個像素實際用了幾個小時，用小時數很少的像素，平均值代表性較差。
+- **使用的模型**：預設用最終模型（`PERIOD_MAP_MODEL = 'final'`，用全部資料重訓）；`TRAIN_FINAL_MODEL = False` 時自動改用 validated 模型。
+- **失敗不影響前面的結果**：模型與圖表都已先儲存，這一步若失敗（例如找不到 nc）只會提示，不會讓整個執行出錯。
+
+事後可用已儲存的模型重畫，或改期間：
+
+```bash
+python predict_period_map.py                                      # 預設模型、模型訓練時的期間
+python predict_period_map.py --model ../../results/models/full_year/latest_final
+python predict_period_map.py --start "2023-03-01 08:00" --end "2023-05-31 15:00"
+```
+
+---
+
 ## 9. 使用上的注意
 
 1. 不要把主程式命名為 `xgboost.py`，會與 xgboost 套件同名而導致匯入錯誤。
@@ -309,6 +355,7 @@ python predict_map.py --nc <含特徵的 nc 檔> --day 15 --hour 6
 | `AttributeError: module 'config' has no attribute ...` | 你的 `config.py` 缺少新設定，請以最新版 `config.py` 為準，或補上缺少的項目 |
 | 「找不到這些特徵欄位」 | 對照訊息中列出的資料實際欄位，修改 `FEATURE_COLS` |
 | 保留的樣本很少 | 看 `data_filtering/filter_by_column.csv`，通常是衛星 `no2` 缺值（雲）造成 |
+| 訓練後的全台平均濃度分佈圖失敗或空白 | 確認 `GRID_NC_PATH` 指向含全台網格特徵的 nc、檔名含 `YYYYMM`，且欄位與模型特徵一致；修正後可用 `predict_period_map.py` 重畫 |
 | 預測全台濃度圖時沒有任何預測值 | 看終端機列出的各特徵缺值數；落後特徵缺值時，請選前幾小時有觀測的 hour |
 | 縣市邊界和資料錯位 | shapefile 缺少 `.prj` 時假設為 EPSG:3824，請查明正確座標系後修改 `map_plot.py` 的 `set_crs(epsg=...)` |
 | 找不到檔案 | 確認是從 `no2_xgb/` 內執行，相對路徑才會對 |
